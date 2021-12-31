@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>{{ title }}</title>
+<!-- bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<!-- fmfm stylesheet -->
+<link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<!-- Flash error messages-->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<!-- Nav bar -->
+<nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
+<ul class="navbar-nav mr-auto">
+
+<!-- Home -->
+<li class="nav-item nav-link">
+<a class="nav-link text-secondary ml-3" href="/">Home</a>
+</li>
+
+<!-- Upload -->
+<li class="nav-item nav-link">
+<a class="nav-link text-secondary" href="/upload">Upload</a>
+</li>
+
+<!-- Search -->
+<li class="nav-item nav-link">
+<form class="d-flex" action="{{ url_for('search') }}">
+<input class="form-control me-2" name="query" type="search" placeholder="Search" aria-label="Search" value="{{ query }}" autofocus>
+<button class="btn btn-outline-success" type="submit">Search</button>
+</form>
+</li>
+
+<!-- Clear -->
+<!-- This is just like a home button but ... -->
+<li class="nav-item nav-link">
+<a class="btn" role="button" id="tag_selector" href="{{ url_for('index') }}">
+Clear
+</a>
+</li>
+
+<!-- Tag -->
+<!-- query text will be ignored (bug in search with tag) -->
+<li class="nav-item nav-link">
+<div class="btn-group">
+<button class="btn btn-primary dropdown-toggle" type="button" id="tag_selector" data-bs-toggle="dropdown" aria-expanded="false">
+Tags
+</button>
+<ul class="dropdown-menu" aria-labelledby="tag_selector">
+{% for tag in taglist() %}
+<li><a class="dropdown-item" href="{{ url_for('index', **modify_query(tag=tag, page='')) }}">{{ tag }}</a></li>
+{% endfor %}
+</ul>
+</div>
+</li>
+
+<!-- Sort -->
+<li class="nav-item nav-link">
+<div class="dropdown">
+<button class="btn btn-secondary dropdown-toggle" type="button" id="sort_selector" data-bs-toggle="dropdown" aria-expanded="false">
+Sort
+</button>
+<ul class="dropdown-menu" aria-labelledby="sort_selector">
+<li><a class="dropdown-item" href="{{ url_for('index', **modify_query(sort_by='title_asc', page='')) }}">Name(A-Z)</a></li>
+<li><a class="dropdown-item" href="{{ url_for('index', **modify_query(sort_by='title_desc', page='')) }}">Name(Z-A)</a></li>
+<li><a class="dropdown-item" href="{{ url_for('index', **modify_query(sort_by='number_desc', page='')) }}">New-Old</a></li>
+<li><a class="dropdown-item" href="{{ url_for('index', **modify_query(sort_by='number_asc', page='')) }}">Old-New</a></li>
+</ul>
+</div>
+</li>
+</ul>
+</nav>
+
+{% block content %}
+{% endblock %}
+<!-- Bootstrap 5 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>

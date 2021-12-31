@@ -1,0 +1,144 @@
+/** for search result **/
+ul.hits {
+    list-style-type: none;
+}
+td.hits {
+    vertical-align: top;
+}
+span.title {
+    font-size: 130%;
+    font-style: oblique;
+    text-weight: bold;
+    background-color: lightgray;
+}
+li.hit {
+    text-align: left;
+}
+li.truncated {
+    font-style: italic;
+    font-size: 90%;
+    color: darkred;
+}
+.hit_img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/** for listview **/
+ul.items {
+    list-style-type: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+li.item {
+    text-align: center;
+    margin: 5px;
+}
+img.thumbnail {
+    border: 1px lightgray solid;
+}
+div.parent {
+    position: relative;
+}
+/* badges */
+.action {
+    position: absolute;
+    text-align: center;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+}
+.refresh {
+    opacity: 0.0;
+    left: 5px;
+    top: 5px;
+    background-color: cyan;
+    color: white;
+}
+.refresh:hover {
+    opacity: 1.0
+}
+.editicon {
+    opacity: 0.4;
+    left: 5px;
+    bottom: 5px;
+    background-color: lime;
+    color: white;
+}
+.editicon:hover {
+    opacity: 1.0
+}
+.filetype {
+    position: absolute;
+    font-weight: bold;
+    text-align: center;
+    right: 5px;
+    bottom: 5px;
+    border-radius: 5px;
+    padding: 5px;
+    font-size: 10px;
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .5);
+}
+.pdf {
+    background-color: red;
+    color: white;
+}
+.zip {
+    background-color: yellow;
+    color: white;
+}
+a.tag {
+    border-radius: 5px;
+    padding: 5px;
+    font-size: 10px;
+    background-color: green;
+    color: white;
+    font-weight: bold;
+}
+
+/** for Flash message **/
+li.success {
+    list-style-type: "\1F44D";
+    border-bottom: 0.5px solid white;
+    width: 50vw;
+    color: white;
+    padding-left: 10px;
+    background-color: midnightblue;
+}
+li.failed {
+    list-style-type: "\1F641";
+    border-bottom: 0.5px solid white;
+    width: 50vw;
+    color: white;
+    padding-left: 10px;
+    background-color: deeppink;
+}
+
+div.parent {
+    position: relative;
+}
+
+.flashes_STUB {
+    position: absolute;
+    float: left;
+    z-index: 2000;
+}
+
+/* https://elixirforum.com/t/flash-message-to-disappear-after-5-seconds/32285/2 */
+/* https://www.otwo.jp/blog/css_animation/ */
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    display: none;
+  }
+}
+
+.fade-out {
+  animation: fade-out 5s 1;
+  animation-fill-mode: both;
+}

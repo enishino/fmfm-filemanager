@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+
+{{ pagination.info }}
+{{ pagination.links }}
+
+<ul class="items">
+    {% for row in rows %}
+    {% if not row.hide %}
+        <li class="item">
+        <div class="parent">
+        <a href="{{ url_for('refresh_caller', number=row.number) }}">
+        <span class="action refresh">↺</span>
+        </a>
+        <a href="{{ url_for('edit_fileinfo', number=row.number) }}">
+        <span class="action editicon">✎</span>
+        </a>
+        <a href="{{ url_for('raw', number=row.number) }}">
+        <span class="filetype {{ row.filetype }}">{{ row.filetype }}</span>
+        </a>
+        <a href="{{ url_for('show', number=row.number) }}">
+        <img class="thumbnail" src="{{ url_for('static', filename='thumbnails/' + row.number|string + '.jpg') }}" 
+        width="100">
+        </div>
+        {{ truncate_title(row.title, size=10) }}</a><br />
+        {% for tag in row.tags.split(' ') %}
+        {% if tag != '' %}
+        <a href="{{ url_for('index', **modify_query(tag=tag, page='')) }}" class="tag">{{ tag }}</a>
+        {% endif %}
+        {% endfor %}
+        &nbsp;
+        </li>
+    {% endif %}
+    {% endfor %}
+</ul>
+
+{{ pagination.links }}
+
+{% endblock %}
