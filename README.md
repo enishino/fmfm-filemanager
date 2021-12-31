@@ -49,6 +49,8 @@ Full-text search (PDF only)
 Above method is just a makeshift. If you like this software, using application and web server is recommended (gunicorn + nginx works well in my environment.)
 
 ## Limitations and bugs
+### Overall
+* The code is ugly, repeating phrases and not well-formatted ;(
 ### Viewer
 * Viewer shows just an image, so in-page search is not possible.
 * PDF rendering is a bit heavy task, for tiny computers like raspberry pi.
