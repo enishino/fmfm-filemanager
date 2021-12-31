@@ -37,16 +37,6 @@ def pdf2img(filename, page=0, dpi=192):
     pil_image = pil_image.convert("RGB")
     return pil_image
 
-def num_sort(k):
-    folname = os.path.dirname(k)
-    basename = os.path.basename(k)
-    nosuf, suffix = os.path.splitext(basename)
-    numero = ".".join(nosuf.split("."))
-    try:
-        return int(numero)
-    except ValueError:
-        return str(numero)
-
 
 def zipcat(filename, page=None):
     ### *** REFACT ***  split len and get ###
@@ -57,7 +47,7 @@ def zipcat(filename, page=None):
             for i in entries
             if i.lower().endswith(IMG_SUFFIX) and not archive.getinfo(i).is_dir()
         ]
-        image_srcs = sorted(image_srcs)#, key=num_sort)
+        image_srcs = sorted(image_srcs)
         if page == None:
             return len(image_srcs)
 
