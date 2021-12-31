@@ -1,15 +1,15 @@
 # fmfm: fast minimum file manager
 A web-based document manager/viewer upon Flask+Python. Currently PDF and zip file (including images) are supported.
 
-**This is still in beta stage and the code would be not secure so please do not use on public servers.**
+**This is still in beta stage and the code would be not secure so please do not use this on public servers.**
 
 ## List view
-Clicking thumbnail opens the viewer. The "PDF" badge jumps into original file. Document tagging and searching is supported.
+Clicking thumbnail opens the viewer. The "PDF" badge jumps into the original file. Document tagging and searching are supported.
 
 <img src="images/1_listview.png" alt="List of files" width="600px" />
 
 ## Viewer
-HTML-based document viewer is included. Capabilities:
+Tiny HTML-based document viewer is included. Capabilities:
 * Single page / Spread view
 * Left-to-right / Right-to-left
 * One page shifting (to correct facing page layout)
@@ -53,7 +53,7 @@ Above method is just a makeshift. If you like this software, using application a
 * The code is ugly, repeating phrases and not well-formatted ;(
 ### Viewer
 * Viewer shows just an image, so in-page search is not possible.
-* PDF rendering is a bit heavy task, for tiny computers like raspberry pi.
+* PDF rendering is a bit heavy task, for SBCs like raspberry pi (RPi4 handles tasks well in my house though;)
 * To suppress transfer size the result is compressed with JPEG, so the viewer shows lossy image.
 * All the image is set to be cached. Please clear browser cache if you found odd behavior.
 ### Search
