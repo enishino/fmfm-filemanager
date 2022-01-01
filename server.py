@@ -15,7 +15,6 @@ from flask import g
 from flask_paginate import Pagination, get_page_parameter
 from flask_caching import Cache
 from werkzeug.urls import url_encode
-from werkzeug.utils import secure_filename
 from werkzeug.exceptions import NotFound
 
 import sqlite3
@@ -26,7 +25,7 @@ from poppler import PageRenderer
 from poppler import RenderHint
 from PIL import Image, ImageOps
 
-from tools import zipcat, pdf2img
+from tools import zipcat, pdf2img, register_file, refresh_entry
 from tools import pdf2ngram, pdf2txt, n_gram, n_gram_to_txt
 from settings import *
 
@@ -404,104 +403,34 @@ def allowed_file(filename):
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload_file():
-    cursor = get_db().cursor()
-
     if request.method == "POST":
         if "file" not in request.files:
             flash("No file part", "failed")
             return redirect(request.url)
 
-        for file in request.files.getlist("file"):
-            if file.filename == "":
+        for a_file in request.files.getlist("file"):
+            if a_file.filename == "":
                 flash("No selected file", "failed")
                 continue
-            if not allowed_file(file.filename):
-                flash(f"Not suitable file type for {file.filename}", "failed")
+            if not allowed_file(a_file.filename):
+                flash(f"Not suitable file type for {a_file.filename}", "failed")
                 continue
 
-            if file:
-                # Get current maximum number of data
-                cursor.execute("select max(number) from books")
+            if a_file:
                 try:
-                    num_max = int(cursor.fetchone()[0])  # **** REFACT ****
-                except TypeError:  # This mean the DB has no entry
-                    num_max = 0
-                new_number = num_max + 1
-
-                # Get name and suffix *** REFACT ? ***
-                filename = os.path.basename(secure_filename(file.filename))
-                if not "." in filename:
-                    filename = f"{new_number}.{filename}"  # Japanese filenames makes this failure
-                basename, suffix = os.path.splitext(filename)
-
-                filetype = suffix.replace(".", "")
-                if filetype in ["", None]:
-                    flash(
-                        f"No suffix. Something wrong with filename ({filename})?",
-                        "failed",
-                    )
+                    new_number = register_file(a_file, DB=get_db())
+                    if new_number > 0:
+                        flash(f'{a_file.filename} was successfully registered as #{new_number}','success')
+                except (TypeError, OSError, KeyError) as e:
+                    flash(str(e), 'failed')
                     continue
-
-                # Rename the file into a sequential number
-                new_filename = str(new_number) + suffix.lower()
-                new_file_real = os.path.join(app.config["UPLOAD_FOLDER"], new_filename)
-
-                # Already existed?
-                if os.path.exists(new_file_real) or os.path.isfile(new_file_real):
-                    flash(
-                        f"Collision on uploading (file {new_number} exists). Please try again.",
-                        "failed",
-                    )
-                    continue
-
-                # Seems OK, Go ahead
-                try:
-                    # Saving uploaded file
-                    file.save(new_file_real)
-
-                    # Calculate MD5
-                    with open(new_file_real, "rb") as f:
-                        hash_md5 = hashlib.md5(f.read()).hexdigest()
-                        cursor.execute("select * from books where md5 = ?", (hash_md5,))
-                        data_same_md5 = cursor.fetchall()
-
-                    # Collision! which file is the problem?
-                    if len(data_same_md5) != 0:
-                        os.remove(new_file_real)  # Clean up the file
-                        collision_no = ", ".join(
-                            [
-                                f"{dict(d)['number']}: {dict(d)['title']}"
-                                for d in data_same_md5
-                            ]
-                        )
-                        flash(
-                            f"The same file (No. {collision_no}) exists in the DB",
-                            "failed",
-                        )
-                        continue
-
-                    # Yes this is OK so I'll insert entry into DB
-                    cursor.execute(
-                        "insert into books (number, title, filetype, md5, tags) values (?, ?, ?, ?, ?)",
-                        (new_number, basename, filetype, hash_md5, ""),
-                    )
-
                 except sqlite3.Error as e:
-                    os.remove(new_file_real)  # Clean up the file
-                    cursor.connection.rollback()  # Cancel the modification
-                    flash(f"SQL Error:{e}", "failed")
-                    return redirect(
-                        request.url
-                    )  # ... In this case the situation of DB may be very bad.
+                    # This case the situation is bad.
+                    flash(e, 'failed')
+                    break
 
-                # Finally commit
-                cursor.connection.commit()
-                flash(
-                    f"Successfully uploaded for {file.filename} as {new_number}",
-                    "success",
-                )
                 # Refresh the entry metadata
-                refresh_entry(new_number)
+                refresh_entry(new_number, DB=get_db())
 
         # After the for loop
         return redirect(url_for("index"))
@@ -576,10 +505,15 @@ def remove_entry():
             flash(f"SQL Error {e}", "failed")
             return redirect(url_for("index"))
 
-        os.remove(
-            os.path.join(app.config["UPLOAD_FOLDER"], str(number) + "." + filetype)
-        )
-        os.remove(os.path.join(app.config["THUMBNAIL_FOLDER"], str(number) + ".jpg"))
+        try:
+            os.remove(
+                os.path.join(app.config["UPLOAD_FOLDER"], str(number) + "." + filetype)
+            )
+            os.remove(os.path.join(app.config["THUMBNAIL_FOLDER"], str(number) + ".jpg"))
+        except FileNotFoundError:
+            # This should be harmless.
+            pass
+
         cursor.connection.commit()
         flash(f"File #{number} was successfully removed", "success")
         return redirect(url_for("index"))
@@ -589,79 +523,12 @@ def remove_entry():
 @app.route("/refresh/<int:number>")
 def refresh_caller(number):
     try:
-        refresh_entry(number)
+        refresh_entry(number, get_db())
         flash(f"Index successfully updated for #{number}", "success")
         return redirect(url_for("index"))
     except Exception as e:
         flash(f"Error {e}", "failed")
         return redirect(url_for("index"))
-
-
-def refresh_entry(number):
-    cursor = get_db().cursor()
-    cursor.execute("select * from books where number = ?", (number,))
-    entry = cursor.fetchone()
-
-    if entry == None:
-        flash(f"No such entry #{number} was found", "failed")
-        raise IndexError
-
-    filetype = entry["filetype"]
-    filename = str(number) + f".{filetype}"
-    file_thumbnail = str(number) + ".jpg"
-    file_real = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    thumb_real = os.path.join(app.config["THUMBNAIL_FOLDER"], file_thumbnail)
-
-    if filetype == "pdf":
-        # Number of pages
-        pagenum = poppler.load_from_file(file_real).pages
-        cursor.execute(
-            "update books set pagenum = ? where number = ?", (pagenum, number)
-        )
-
-        # Generate thumbnail
-        thumbnail = pdf2img(file_real)
-        thumbnail = thumbnail.convert("RGB")
-        thumbnail = ImageOps.contain(thumbnail, (400, 400))
-        thumbnail.save(thumb_real, "JPEG")
-
-        # Generate text index
-        page_ngram = pdf2ngram(file_real)
-        index_data = tuple((number, p, t) for p, t in enumerate(page_ngram))
-        cursor.execute("delete from fts where number = ?", (number,))
-        cursor.executemany(
-            "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
-        )
-
-    if filetype == "zip":
-        pagenum = zipcat(file_real)
-        cursor.execute(
-            "update books set pagenum = ? where number = ?", (pagenum, number)
-        )
-        thumbnail, imgtype, imgmode = zipcat(file_real, page=0)
-        thumbnail = thumbnail.convert("RGB")
-        thumbnail = ImageOps.contain(thumbnail, (400, 400))
-        thumbnail.save(thumb_real, "JPEG")
-
-    # Spread view: 1=True, 0=False
-    if entry["spread"] == None:
-        cursor.execute("update books set spread = ? where number = ?", (True, number))
-
-    # L2R view: 1=True, 0=False
-    if entry["r2l"] == None:
-        cursor.execute("update books set r2l = ? where number = ?", (False, number))
-
-    # Hiding: 1=True, 0=False
-    if entry["hide"] == None:
-        cursor.execute("update books set hide = ? where number = ?", (False, number))
-
-    # Update MD5 hash
-    with open(file_real, "rb") as f:
-        hash_md5 = hashlib.md5(f.read()).hexdigest()
-    cursor.execute("update books set md5 = ? where number = ?", (hash_md5, number))
-
-    # Finally commit
-    cursor.connection.commit()
 
 
 # Favicon
