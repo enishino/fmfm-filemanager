@@ -323,6 +323,9 @@ window.onresize = redraw
 //// ---- Drawing  ---- ////
 // Drawing to canvas func.
 async function draw(src1, src2) {
+    // Changes the cursor
+    canvas.style.cursor = "wait";
+
     // let img1, img2
     if (src1) {
         var img1 = new Image()
@@ -350,6 +353,9 @@ async function draw(src1, src2) {
         console.log("No images are found")
 
     }
+
+    // Get back the cursor
+    canvas.style.cursor = "auto";
 }
 
 // Drawing wrapper
