@@ -237,7 +237,7 @@ async function delayloader(srcs) {
 }
 
 // Image preloading
-async function preload(pos, direction, size = 4) {
+async function preload(pos, direction, size = 8) {
   if (direction == "forward") {
     _list = img_list.slice(pos, pos + size);
   } else {
