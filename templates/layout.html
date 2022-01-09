@@ -21,8 +21,17 @@
   {% endif %}
 {% endwith %}
 
-<!-- Nav bar -->
+<!-- Nav bar start -->
 <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
+<div class="container-fluid">
+
+<!-- Hamburger menu -->
+<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+<span class="navbar-toggler-icon"></span>
+</button>
+
+<!-- Navigation buttons start -->
+<div class="collapse navbar-collapse" id="navbarSupportedContent">
 <ul class="navbar-nav mr-auto">
 
 <!-- Home -->
@@ -41,14 +50,6 @@
 <input class="form-control me-2" name="query" type="search" placeholder="Search" aria-label="Search" value="{{ query }}" autofocus>
 <button class="btn btn-outline-success" type="submit">Search</button>
 </form>
-</li>
-
-<!-- Clear -->
-<!-- This is just like a home button but ... -->
-<li class="nav-item nav-link">
-<a class="btn" role="button" id="tag_selector" href="{{ url_for('index') }}">
-Clear
-</a>
 </li>
 
 <!-- Tag -->
@@ -80,8 +81,12 @@ Sort
 </ul>
 </div>
 </li>
+
+<!-- navbar end -->
 </ul>
 </nav>
+</div>
+</div>
 
 {% block content %}
 {% endblock %}

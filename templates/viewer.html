@@ -61,41 +61,45 @@ div.menu {
 {% endwith %}
 
 <div class="menu">
-<nav class="navbar navbar-expand-sm navbar-dark bg-dark sticky-top hidden">
-
-    <div class="navbar-left flex-grow-1">
-        <ul class="navbar-nav">
-            <!-- Back -->
-            <li class="nav-item nav-link">
-                <a class="nav-link text-secondary" href="{{ prev_url }}">Back</a>
-            </li>
-            <!-- Edit -->
-            <li class="nav-item nav-link">
-                <a class="btn btn-secondary" role="button" href="{{ url_for('edit_fileinfo', number=data['number']) }}">
-                    Edit
-                </a>
-            </li>
-            <!-- Page slider -->
-            <li class="nav-item d-flex align-items-center flex-grow-1">
-                <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" step="1" id="pagecontrol" value="0" onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
-            </li>
-            <!-- Page shifter -->
-            <li class="nav-item d-flex align-items-center">
-                <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off"
-                onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
-                {% if not data['spread'] %} disabled {% endif %} />
-                <label class="btn btn-outline-primary" for="pageshift">Shift</label>
-            </li>
-            <!-- Download -->
-            <li class="nav-item nav-link">
-                <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
-                    Download
-                </a>
-            </li>
-        </ul>
+<nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav flex-grow-1">
+        <li class="nav-item nav-link">
+            <a class="nav-link text-secondary" href="{{ prev_url }}">Back</a>
+        </li>
+        <li class="nav-item nav-link">
+            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_fileinfo', number=data['number']) }}">
+                Edit
+            </a>
+        </li>
+        <li class="nav-item d-flex align-items-center flex-grow-1">
+            <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" step="1" id="pagecontrol" value="0" onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
+        </li>
+        <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="spread" autocomplete="off"
+            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
+            {% if data['spread'] %} checked {% endif %} />
+            <label class="btn btn-outline-info" for="spread">Spread</label>
+        </li>
+        <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off"
+            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
+            <label class="btn btn-outline-primary" for="pageshift">Shift</label>
+        </li>
+        <li class="nav-item nav-link">
+            <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
+                Download
+            </a>
+        </li>
+    </ul>
     </div>
-
+  </div>
 </nav>
+
 </div>
 
 </div>
@@ -122,26 +126,26 @@ file_list = Array.from(Array({{ data['pagenum'] }}), (v, k) => "/img/{{ data['nu
 
 //// ---- Image list handling ---- ////
 // Image list creation and modification
+// Todo: Split interface update and list making
 function list_init() {
-  pageshift = document.getElementById("pageshift").checked;
+  spread = document.getElementById("spread").checked; // By default is read from DB
+  if (spread) {
+    pageshift = document.getElementById("pageshift").checked; // By default is false
+    document.getElementById("pageshift").disabled = false;
+  } else {
+    pageshift = false
+    document.getElementById("pageshift").disabled = true;
+  }
 
   img_list = file_list.concat();
-  if (pageshift) {
-    if (r2l) {
-      img_list.push(null);
-    } else {
-      img_list.unshift(null);
-    }
-  }
 
   // [Interface] Paging interface tempering
   if (spread) {
     pagecontroller.step = 2;
-    if (img_list.length % 2 == 0) {
-      pagecontroller.max = img_list.length - 2;
-    } else {
-      pagecontroller.max = img_list.length - 1;
-    }
+    pagecontroller.max = img_list.length - 1 - (img_list.length % 2)
+  } else { // single page
+    pagecontroller.step = 1;
+    pagecontroller.max = img_list.length - 1;
   }
 
   // [Start position]
@@ -151,61 +155,63 @@ function list_init() {
     start_from = img_list.length - 1 - start_from;
   }
 
-  start_from = sane_position(start_from);
-
-  // [Spread] when p.1 specified and 0/1 is shown, the starting point should be 0
-  // also applied with page shifted condition with even starting point.
-  if ((spread && start_from % 2 != 0) || (spread && pageshift && start_from % 2 == 0)) {
-    start_from -= 1;
+  // Shift the page
+  if (pageshift && spread) {
+      img_list.unshift(null);
   }
+
+  // Fix out of the range and wrong spreading
+  start_from = sane_position(start_from);
 }
 
 function sane_position(pos) {
-  // [Foolproof] Position overflow fix
+  // Position overflow fix
   if (pos > img_list.length - 1) {
-    pos = img_list.length - 1;
+    if (spread && img_list.length % 2 == 0){
+      return img_list.length - 2;
+    } else {
+      return img_list.length - 1;
+    }
   }
-  if (pos < 0) {
-    pos = 0;
+
+  // Underflow fix
+  if (pos <= 0) {
+    return 0;
   }
+
+  // "Left" page should be selected when spread
+  if (pos % 2 != 0 && spread) {
+    return pos - 1;
+  }
+
+  // else are ok
   return pos;
 }
 
 // Image path handler
-// This considers just a position (index) in a image list (not r2l direction)
-// l[0] is edge of the "left" side, l[-1] is of the "right" side.
 var image_handler = (function () {
-  if (!this.awake) {
-    var pos = 0;
-    this.awake = true;
-  }
-
-  function move(val) {
-    pos += val;
-    pos = sane_position(pos)
-  }
+  var pos = 0;
 
   return {
     next: function () {
       if (spread) {
-        if (pos < img_list.length - 2) {
-            move(2);
-        }
+        pos += 2;
       } else {
-        move(1);
+        pos += 1;
       }
     },
     prev: function () {
       if (spread) {
-        move(-2);
+        pos -= 2;
       } else {
-        move(-1);
+        pos -= 1;
       }
     },
     set_pos: function (abs_pos) {
-      pos = sane_position(parseInt(abs_pos))
+      pos = parseInt(abs_pos)
     },
     path: function () {
+      pos = sane_position(pos)
       if (spread) {
         return [img_list[pos], img_list[pos + 1]];
       } else {
@@ -213,7 +219,7 @@ var image_handler = (function () {
       }
     },
     current: function () {
-      return pos;
+      return sane_position(pos);
     },
   };
 })();
@@ -324,9 +330,6 @@ function wheelEvent(event) {
 }
 addEventListener("wheel", wheelEvent);
 
-// When window size changes the canvas will be changed
-window.onresize = redraw;
-
 //// ---- Drawing  ---- ////
 // Drawing to canvas func.
 async function draw(src1, src2) {
@@ -367,11 +370,20 @@ function redraw() {
   canvas.width = c_width * expansion;
   canvas.height = c_height * expansion;
 
+  if (canvas.width / canvas.height < 1.4) {
+    spread = false; // Turn off spreading ANYWAY
+  } else {
+    spread = document.getElementById("spread").checked; // By default is read from DB
+  }
+
   // get image path
   let src1, src2;
   [src1, src2] = image_handler.path();
   draw(src1, src2);
 }
+
+// When window size changes the canvas will be changed
+window.onresize = redraw;
 
 //// ---- Initialization ---- ////
 // Image list preparation
