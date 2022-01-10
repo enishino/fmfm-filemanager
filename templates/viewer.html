@@ -80,15 +80,15 @@ div.menu {
             <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" step="1" id="pagecontrol" value="0" onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
         </li>
         <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off"
+            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
+            <label class="btn btn-outline-primary" for="pageshift">Shift</label>
+        </li>
+        <li class="nav-item nav-link">
             <input type="checkbox" class="btn-check" id="spread" autocomplete="off"
             onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
             {% if data['spread'] %} checked {% endif %} />
             <label class="btn btn-outline-info" for="spread">Spread</label>
-        </li>
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off"
-            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
-            <label class="btn btn-outline-primary" for="pageshift">Shift</label>
         </li>
         <li class="nav-item nav-link">
             <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
