@@ -8,6 +8,7 @@ import unicodedata
 import hashlib
 import zipfile
 import socket
+import requests
 
 from flask import Flask, render_template, request, redirect, url_for, make_response
 from flask import abort, flash, session, send_file, send_from_directory
@@ -16,6 +17,7 @@ from flask_paginate import Pagination, get_page_parameter
 from flask_caching import Cache
 from werkzeug.urls import url_encode
 from werkzeug.exceptions import NotFound
+from werkzeug.datastructures import FileStorage
 
 import sqlite3
 from contextlib import closing
@@ -91,17 +93,6 @@ def modify_query(**new_values):
     for key, value in new_values.items():
         args[key] = value
     return args
-
-
-# to calculate length of 2-bytes char. as 2
-@app.template_global()
-def truncate_title(v: str, size=10):
-    asian_len = [2 if unicodedata.east_asian_width(c) in "FWA" else 1 for c in v]
-    for n, p in enumerate(asian_len):
-        if sum(asian_len[:n]) > 10:
-            return v[:n]
-    else:
-        return v
 
 
 # Tag cloud
@@ -398,19 +389,44 @@ app.config["THUMBNAIL_FOLDER"] = THUMBDIR_PATH
 
 
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT_MIMETYPE.values()
 
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload_file():
+    files = []
     if request.method == "POST":
-        if "file" not in request.files:
-            flash("No file part", "failed")
-            return redirect(request.url)
+        # Download URL and register
+        if "file_url" in request.form.keys() and request.form['file_url'] != '':
+            try:
+                response = requests.get(request.form['file_url'])
+            except:
+                flash("Specified URL is not found", "failed")
+                response = False
 
-        for a_file in request.files.getlist("file"):
+            if response:
+                mimetype = response.headers['Content-Type'].split(';')[0]
+                if mimetype not in ALLOWED_EXT_MIMETYPE.keys():
+                    flash(f"File from {request.form['file_url']} is not suitable type", "failed")
+                    return redirect(request.url)
+                
+                filename = os.path.basename(response.url)
+                if filename == '':
+                    filename = 'downloaded'
+
+                # Contain into werkzeug's filestorage
+                a_file = FileStorage(io.BytesIO(response.content), 
+                                content_type=mimetype, 
+                                content_length=len(response.content),
+                                filename=filename)            
+                files.append(a_file)
+
+        # Files uploaded
+        files.extend(request.files.getlist("file"))
+
+        # Filename check
+        for a_file in files:
             if a_file.filename == "":
-                flash("No selected file", "failed")
                 continue
             if not allowed_file(a_file.filename):
                 flash(f"Not suitable file type for {a_file.filename}", "failed")
@@ -436,7 +452,7 @@ def upload_file():
         return redirect(url_for("index"))
 
     elif request.method == "GET":
-        return render_template("upload.html", title="Uploading")
+        return render_template("upload.html", title="Upload", allowed_types=', '.join(ALLOWED_EXT_MIMETYPE.values()))
 
 
 # Edit the detail

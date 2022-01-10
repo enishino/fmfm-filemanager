@@ -10,17 +10,6 @@
 </head>
 <body>
 
-<!-- Flash error messages-->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <ul class="flashes">
-    {% for category, message in messages %}
-      <li class="{{ category }}">{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-
 <!-- Nav bar start -->
 <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top">
 <div class="container-fluid">
@@ -87,6 +76,17 @@ Sort
 </nav>
 </div>
 </div>
+
+<!-- Flash error messages-->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
 
 {% block content %}
 {% endblock %}

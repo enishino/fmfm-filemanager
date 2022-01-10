@@ -19,10 +19,9 @@
         <span class="filetype {{ row.filetype }}">{{ row.filetype }}</span>
         </a>
         <a href="{{ url_for('show', number=row.number) }}">
-        <img class="thumbnail" src="{{ url_for('static', filename='thumbnails/' + row.number|string + '.jpg') }}" 
-        width="100">
+        <img class="thumbnail" src="{{ url_for('static', filename='thumbnails/' + row.number|string + '.jpg') }}" width="100">
         </div>
-        {{ truncate_title(row.title, size=10) }}</a><br />
+        <div class="text-truncate" style="max-width: 100px;">{{ row.title }}</div></a><br />
         {% for tag in row.tags.split(' ') %}
         {% if tag != '' %}
         <a href="{{ url_for('index', **modify_query(tag=tag, page='')) }}" class="tag">{{ tag }}</a>

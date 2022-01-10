@@ -13,5 +13,5 @@ DATABASE_PATH = os.path.dirname(os.path.abspath(__file__)) + '/data/data.db'
 SCHEMA_PATH = os.path.dirname(os.path.abspath(__file__)) + '/data/schema.sql'
 
 # Filetype settings
-ALLOWED_EXTENSIONS = {"pdf", "zip"}
-IMG_SUFFIX = (".jpg", ".png", ".bmp", ".tiff", "*.gjf")
+ALLOWED_EXT_MIMETYPE = {"application/pdf": "pdf", "application/zip": "zip"}
+IMG_SUFFIX = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gjf")

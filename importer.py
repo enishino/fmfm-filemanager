@@ -23,8 +23,11 @@ def get_db():
     return DB
 
 # Parse all files in inbox
-# (This is really similar to upload function in server and need to be merged...)
-for g in glob.glob(f'{inbox}/*.*'):
+files = []
+for ext in ALLOWED_EXT_MIMETYPE.values():
+    files.extend(glob.glob(f'{inbox}/*.{ext}'))
+
+for g in files:
     print()
     print(f'Process for {g}')
     try:
