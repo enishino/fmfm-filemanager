@@ -325,7 +325,7 @@ function redraw() {
 //// ---- Interfacing ---- ////
 // Page moving wrapper
 function pagemove(direction, pos=null) {
-  if (pos) {
+  if (pos != null) {
     image_handler.set_pos(pos);
   } else {
     if (direction == "next") {
