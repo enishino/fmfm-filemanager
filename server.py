@@ -37,13 +37,6 @@ app.secret_key = "fmfm"
 hostname = socket.gethostname()
 
 
-# Caching (without flask-cache, browser side only)
-@app.after_request
-def do_cache(response):
-    response.headers['Cache-Control'] = 'max-age=3000'
-    return response
-
-
 # DB management
 # Opening DB
 def get_db():
@@ -100,9 +93,9 @@ def taglist():
 
 
 # PIL Image -> Image file
-def send_pil_image(pil_img, imgtype="JPEG", imgmode="RGB", quality=100, shrink=False):
+def send_pil_image(pil_img, imgtype="JPEG", imgmode="RGB", quality=100, shrink=False, caching=True):
     pil_img = pil_img.convert(imgmode)
-    if shrink:
+    if shrink: # REFACT consider splitting
         imgtype = "JPEG"
         pil_img = pil_img.convert("RGB")
         quality = 90
@@ -111,7 +104,10 @@ def send_pil_image(pil_img, imgtype="JPEG", imgmode="RGB", quality=100, shrink=F
     pil_img.save(img_io, imgtype, quality=quality)
     img_io.seek(0)
     mimetypes = {"PNG": "image/png", "JPEG": "image/jpeg", "BMP": "image/bmp"}
-    return send_file(img_io, mimetype=mimetypes[imgtype])
+    response = make_response(send_file(img_io, mimetype=mimetypes[imgtype]))
+    if caching:
+        response.headers['Cache-Control'] = 'max-age=3000'
+    return response
 
 
 # Text -> excerpted text (in search result)
