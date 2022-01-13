@@ -17,6 +17,7 @@ nav:hover {
 div.parent {
     position:relative;
 }
+
 div.menu {
     position: absolute;
     float: left;
@@ -25,6 +26,15 @@ div.menu {
     margin: auto;
 }
 
+.width60 {
+    width: 60px;
+}
+
+.width40 {
+    width: 40px;
+}
+
+/* For flash */
 .flashes {
     position: absolute;
     float: left;
@@ -63,36 +73,49 @@ div.menu {
 <div class="menu">
 <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
   <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" 
+     aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav flex-grow-1">
         <li class="nav-item nav-link">
-            <a class="nav-link text-secondary" href="{{ prev_url }}">Back</a>
+            <a class="btn btn-secondary" href="{{ prev_url }}">
+            ⮌Back
+            </a>
+        </li>
+        <li class="nav-item nav-link d-flex">
+            <!-- STUB! if R2L the position is hard to calculate! -->
+            <!-- ... and click where to defocus? -->
+            <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
+            onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
+            <input type="text" readonly class="form-control-plaintext width40" id="position"
+            value="/ {{ data['pagenum'] }}" />
+        </li>
+        <li class="nav-item nav-link d-flex flex-grow-1 align-items-center">
+            <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" 
+             step="1" id="pagecontrol" value="0"
+             onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
+        </li>
+        <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off" aria-label="shift the page"
+            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
+            <label class="btn btn-outline-primary" for="pageshift">⭾</label>
+        </li>
+        <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="spread" autocomplete="off" aria-label="spreading the book"
+            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
+            {% if data['spread'] %} checked {% endif %} />
+            <label class="btn btn-outline-info" for="spread">📖</label>
         </li>
         <li class="nav-item nav-link">
             <a class="btn btn-secondary" role="button" href="{{ url_for('edit_fileinfo', number=data['number']) }}">
-                Edit
+                ✎Edit
             </a>
-        </li>
-        <li class="nav-item d-flex align-items-center flex-grow-1">
-            <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" step="1" id="pagecontrol" value="0" onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
-        </li>
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off"
-            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
-            <label class="btn btn-outline-primary" for="pageshift">Shift</label>
-        </li>
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="spread" autocomplete="off"
-            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
-            {% if data['spread'] %} checked {% endif %} />
-            <label class="btn btn-outline-info" for="spread">Spread</label>
         </li>
         <li class="nav-item nav-link">
             <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
-                Download
+                ⇩DL
             </a>
         </li>
     </ul>
@@ -110,12 +133,13 @@ div.menu {
 <script>
 // Todo: if the screen width < height, turn off spread and reload (possible?)
 
-// Common config (global, won't be changed in a session)'
+// Common config
 var img_list = [];
 var start_from = {{ start_from }}
 var spread = {{ data['spread'] }}
 var r2l = {{ data['r2l'] }}
 var pagecontroller = document.getElementById("pagecontrol");
+var pagenumshow = document.getElementById('position');
 
 // Canvas drawing
 var canvas = document.getElementById("canvas");
@@ -139,15 +163,6 @@ function list_init() {
 
   img_list = file_list.concat();
 
-  // [Interface] Paging interface tempering
-  if (spread) {
-    pagecontroller.step = 2;
-    pagecontroller.max = img_list.length - 1 - (img_list.length % 2)
-  } else { // single page
-    pagecontroller.step = 1;
-    pagecontroller.max = img_list.length - 1;
-  }
-
   // [Start position]
   // [R2L] direction reversing ... next/prev means now <- and -> for image number (not array pos).
   if (r2l) {
@@ -162,6 +177,16 @@ function list_init() {
 
   // Fix out of the range and wrong spreading
   start_from = sane_position(start_from);
+
+  // [Interface] Paging interface tempering
+  if (spread) {
+    pagecontroller.step = 2;
+    pagecontroller.max = img_list.length - 1 + (img_list.length % 2)
+  } else { // single page
+    pagecontroller.step = 1;
+    pagecontroller.max = img_list.length - 1;
+  }
+
 }
 
 function sane_position(pos) {
@@ -169,46 +194,39 @@ function sane_position(pos) {
   if (pos > img_list.length - 1) {
     if (spread && img_list.length % 2 == 0){
       return img_list.length - 2;
-    } else {
+    } else { // not spread or not even
       return img_list.length - 1;
     }
   }
-
   // Underflow fix
   if (pos <= 0) {
     return 0;
   }
-
   // "Left" page should be selected when spread
-  if (pos % 2 != 0 && spread) {
+  if (pos%2 != 0 && spread) {
     return pos - 1;
   }
-
-  // else are ok
+  // else: is ok
   return pos;
 }
 
 // Image path handler
 var image_handler = (function () {
-  var pos = 0;
+  var pos = start_from;
 
   return {
     next: function () {
-      if (spread) {
-        pos += 2;
-      } else {
-        pos += 1;
-      }
+      pos += 1 + Number(spread)
     },
     prev: function () {
-      if (spread) {
-        pos -= 2;
-      } else {
-        pos -= 1;
-      }
+      pos -= 1 + Number(spread)
     },
     set_pos: function (abs_pos) {
-      pos = parseInt(abs_pos)
+      if (isNaN(abs_pos)) {
+        console.log("Error: " + abs_pos + " is not a number")
+      } else {
+        pos = parseInt(abs_pos)
+      }
     },
     path: function () {
       pos = sane_position(pos)
@@ -243,7 +261,7 @@ async function delayloader(srcs) {
 }
 
 // Image preloading
-async function preload(pos, direction, size = 8) {
+async function preload(pos, direction, size=8) {
   if (direction == "forward") {
     _list = img_list.slice(pos, pos + size);
   } else {
@@ -251,84 +269,6 @@ async function preload(pos, direction, size = 8) {
   }
   preload_imgs = await delayloader(_list);
 }
-
-//// ---- Interfacing ---- ////
-// Page moving wrapper
-function pagemove(direction, pos = null) {
-  if (pos) {
-    image_handler.set_pos(pos);
-  } else {
-    if (direction == "next") {
-      image_handler.next();
-    } else if (direction == "prev") {
-      image_handler.prev();
-    }
-  }
-
-  // Take current position (set in above code)
-  pos = image_handler.current();
-  pagecontroller.value = pos;
-  redraw();
-
-  // Preload
-  if (direction == "next" || direction == "both") {
-    preload(pos, "forward");
-  }
-  if (direction == "prev" || direction == "both") {
-    preload(pos, "back");
-  }
-}
-
-// Click interface
-canvas.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const point = {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top,
-  };
-  if (canvas.width - point.x * expansion > canvas.width / 2) {
-    pagemove("prev");
-  } else {
-    pagemove("next");
-  }
-});
-
-// Keyboard interface
-// Todo: use https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap
-function keyboardEvent(event) {
-  if (event.type === "keydown" && event.code === "ArrowLeft") {
-    pagemove("prev");
-  }
-  if (event.type === "keydown" && event.code === "ArrowRight") {
-    pagemove("next");
-  }
-  if (event.type === "keydown" && event.code === "Escape") {
-    history.back();
-  }
-  if (event.type === "keydown" && event.code === "KeyQ") {
-    history.back();
-  }
-}
-addEventListener("keydown", keyboardEvent);
-
-// Wheel triggers the page movement.
-function wheelEvent(event) {
-  if (event.type === "wheel") {
-    // The point is that user don't want to reverse the wheel direction!
-    // So here the direction is reversed when R2L is on.
-    if (r2l) {
-      dY = -event.deltaY;
-    } else {
-      dY = event.deltaY;
-    }
-    if (dY < 0) {
-      pagemove("prev");
-    } else {
-      pagemove("next");
-    }
-  }
-}
-addEventListener("wheel", wheelEvent);
 
 //// ---- Drawing  ---- ////
 // Drawing to canvas func.
@@ -382,21 +322,98 @@ function redraw() {
   draw(src1, src2);
 }
 
+//// ---- Interfacing ---- ////
+// Page moving wrapper
+function pagemove(direction, pos=null) {
+  if (pos) {
+    image_handler.set_pos(pos);
+  } else {
+    if (direction == "next") {
+      image_handler.next();
+    } else if (direction == "prev") {
+      image_handler.prev();
+    }
+  }
+
+  // Take current position (set in above code)
+  pos = image_handler.current();
+  pagecontroller.value = pos;
+  if (r2l) {
+    pagenumshow.value = img_list.length - pos;
+  } else {
+    pagenumshow.value = pos+1;
+  }
+  redraw();
+
+  // Preload
+  // REFACT? need to separate semantic of "next" in moving and preloading context
+  if (direction == "next" || direction == "both") {
+    preload(pos, "forward");
+  }
+  if (direction == "prev" || direction == "both") {
+    preload(pos, "back");
+  }
+}
+
+// Click interface
+canvas.addEventListener("click", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const point = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+  if (canvas.width - point.x * expansion > canvas.width/2) {
+    pagemove("prev");
+  } else {
+    pagemove("next");
+  }
+});
+
+// Keyboard interface
+// Todo: use https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap
+function keyboardEvent(event) {
+  if (event.type === "keydown" && event.code === "ArrowLeft") {
+    pagemove("prev");
+  }
+  if (event.type === "keydown" && event.code === "ArrowRight") {
+    pagemove("next");
+  }
+  if (event.type === "keydown" && event.code === "Escape") {
+    history.back();
+  }
+  if (event.type === "keydown" && event.code === "KeyQ") {
+    history.back();
+  }
+}
+addEventListener("keydown", keyboardEvent);
+
+// Wheel triggers the page movement.
+function wheelEvent(event) {
+  if (event.type === "wheel") {
+    // The point is that user don't want to reverse the wheel direction!
+    // So here the direction is reversed when R2L is on.
+    if (r2l) {
+      dY = -event.deltaY;
+    } else {
+      dY = event.deltaY;
+    }
+    if (dY < 0) {
+      pagemove("prev");
+    } else {
+      pagemove("next");
+    }
+  }
+}
+addEventListener("wheel", wheelEvent);
+
+//// ---- Initialization ---- ////
 // When window size changes the canvas will be changed
 window.onresize = redraw;
 
-//// ---- Initialization ---- ////
 // Image list preparation
 list_init();
-
-// Start position is set
-image_handler.set_pos(start_from);
-pagecontroller.value = start_from;
-
-// Preload both direction (start from middle)
-preload(start_from, "forward");
-preload(start_from, "back");
-
+// Go to starting point
+pagemove("next", pos=start_from)
 // Draw the canvas
 redraw();
 
