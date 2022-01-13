@@ -266,7 +266,9 @@ async function preload(pos, direction, size=8) {
     _list = img_list.slice(pos, pos + size);
   } else {
     _list = img_list.slice(pos - size, pos);
+    _list.reverse();
   }
+
   preload_imgs = await delayloader(_list);
 }
 
