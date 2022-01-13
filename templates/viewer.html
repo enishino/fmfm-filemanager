@@ -348,10 +348,10 @@ function pagemove(direction, pos=null) {
   // Preload
   // REFACT? need to separate semantic of "next" in moving and preloading context
   if (direction == "next" || direction == "both") {
-    preload(pos, "forward");
+    await preload(pos, "forward");
   }
   if (direction == "prev" || direction == "both") {
-    preload(pos, "back");
+    await preload(pos, "back");
   }
 }
 
