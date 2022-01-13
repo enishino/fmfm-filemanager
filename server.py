@@ -320,7 +320,7 @@ def show(number, start_from):
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
-    if request.referrer and "edit" in request.referrer:
+    if request.referrer == None or "edit" in request.referrer:
         prev_url = url_for("index")
     else:
         prev_url = request.referrer
