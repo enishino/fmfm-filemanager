@@ -14,7 +14,6 @@ from flask import Flask, render_template, request, redirect, url_for, make_respo
 from flask import abort, flash, session, send_file, send_from_directory
 from flask import g
 from flask_paginate import Pagination, get_page_parameter
-from flask_caching import Cache
 from werkzeug.urls import url_encode
 from werkzeug.exceptions import NotFound
 from werkzeug.datastructures import FileStorage
@@ -38,16 +37,11 @@ app.secret_key = "fmfm"
 hostname = socket.gethostname()
 
 
-# Caching
-config = {
-    "DEBUG": False,
-    "CACHE_TYPE": "SimpleCache",
-    "CACHE_DEFAULT_TIMEOUT": 3000,
-    "SEND_FILE_MAX_AGE_DEFAULT": 3000,
-}
-config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
-app.config.from_mapping(config)
-cache = Cache(app)
+# Caching (without flask-cache, browser side only)
+@app.after_request
+def do_cache(response):
+    response.headers['Cache-Control'] = 'max-age=3000'
+    return response
 
 
 # DB management
@@ -350,7 +344,6 @@ def raw(number):
 
 # Returns the image of a page
 @app.route("/img/<int:number>/<int:page>")
-@cache.cached()
 def page_image(number, page, shrink=True):
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
