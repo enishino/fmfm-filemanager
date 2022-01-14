@@ -81,7 +81,7 @@ div.menu {
     <ul class="navbar-nav flex-grow-1">
         <li class="nav-item nav-link">
             <a class="btn btn-secondary" href="{{ prev_url }}">
-            ⮌Back
+            ↩Back
             </a>
         </li>
         <li class="nav-item nav-link d-flex">
@@ -89,8 +89,7 @@ div.menu {
             <!-- ... and click where to defocus? -->
             <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
             onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
-            <input type="text" readonly class="form-control-plaintext width40" id="position"
-            value="/ {{ data['pagenum'] }}" />
+            <div class="d-flex align-items-center ms-2">/ {{ data['pagenum'] }}</div>
         </li>
         <li class="nav-item nav-link d-flex flex-grow-1 align-items-center">
             <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" 
@@ -100,7 +99,7 @@ div.menu {
         <li class="nav-item nav-link">
             <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off" aria-label="shift the page"
             onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
-            <label class="btn btn-outline-primary" for="pageshift">⭾</label>
+            <label class="btn btn-outline-primary" for="pageshift">➦</label>
         </li>
         <li class="nav-item nav-link">
             <input type="checkbox" class="btn-check" id="spread" autocomplete="off" aria-label="spreading the book"
@@ -364,9 +363,9 @@ canvas.addEventListener("click", (e) => {
     x: e.clientX - rect.left,
     y: e.clientY - rect.top,
   };
-  if (canvas.width - point.x * expansion > canvas.width/2) {
+  if (canvas.width - point.x * expansion > canvas.width * 0.6) {
     pagemove("prev");
-  } else {
+  } else if (canvas.width - point.x * expansion < canvas.width * 0.4) {
     pagemove("next");
   }
 });
@@ -415,7 +414,7 @@ window.onresize = redraw;
 // Image list preparation
 list_init();
 // Go to starting point
-pagemove("next", pos=start_from)
+pagemove("next", pos=start_from);
 // Draw the canvas
 redraw();
 
