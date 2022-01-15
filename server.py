@@ -134,12 +134,12 @@ sort_methods = {'title_asc': ('title', 'asc'), 'title_desc': ('title', 'desc'),
 def index():
     # In this gridview just tag search is enabled
     tag = request.args.get("tag", type=str, default="")
-    sort_by = request.args.get("sort_by", type=str, default="title_asc")
+    sort_by = request.args.get("sort_by", type=str, default="number_desc")
     if sort_by in sort_methods.keys():
         sort_col, sort_meth = sort_methods[sort_by]
     else:
         flash('Failure on selecting sorting method', 'failure')
-        sort_col, sort_meth = 'title', 'asc' # as default.
+        sort_col, sort_meth = 'number', 'desc' # as default.
 
     cursor = get_db().cursor()
     if tag == "":
@@ -320,10 +320,15 @@ def show(number, start_from):
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
+
     if request.referrer == None or "edit" in request.referrer:
         prev_url = url_for("index")
     else:
         prev_url = request.referrer
+
+    if data['pagenum'] == None:
+        flash(f"Page number is not set. Please refresh the entry", "failed")
+        return redirect(prev_url)
 
     return render_template(
         "viewer.html", data=data, start_from=start_from, prev_url=prev_url

@@ -133,8 +133,6 @@ div.menu {
 </div>
 
 <script>
-// Todo: if the screen width < height, turn off spread and reload (possible?)
-
 // Common config
 var img_list = [];
 var start_from = {{ start_from }}
@@ -148,6 +146,7 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 var expansion = 3.0; // internal resolution per canvas size
 
+// URL list
 file_list = Array.from(Array({{ data['pagenum'] }}), (v, k) => "/img/{{ data['number'] }}/" + k)
 
 //// ---- Image list handling ---- ////
@@ -166,7 +165,7 @@ function list_init() {
   img_list = file_list.concat();
 
   // [Start position]
-  // [R2L] direction reversing ... next/prev means now <- and -> for image number (not array pos).
+  // [R2L] direction reversing: left page [0 ... 128] right page
   if (r2l) {
     img_list.reverse();
     start_from = img_list.length - 1 - start_from;
@@ -177,39 +176,25 @@ function list_init() {
       img_list.unshift(null);
   }
 
-  // Fix out of the range and wrong spreading
+  // Fixing position of out of the range and wrong spreading
   start_from = sane_position(start_from);
 
-  // [Interface] Paging interface tempering
-  if (spread) {
-    pagecontroller.step = 2;
-    pagecontroller.max = img_list.length - 1 + (img_list.length % 2)
-  } else { // single page
-    pagecontroller.step = 1;
-    pagecontroller.max = img_list.length - 1;
-  }
-
+  // Paging interface tempering
+  pagecontroller.step = 1 + Number(spread);
+  pagecontroller.max = img_list.length - 1 + (Number(spread) * img_list.length % 2)
 }
 
 function sane_position(pos) {
   // Position overflow fix
   if (pos > img_list.length - 1) {
-    if (spread && img_list.length % 2 == 0){
-      return img_list.length - 2;
-    } else { // not spread or not even
-      return img_list.length - 1;
-    }
+    return img_list.length - 1 - (Number(spread) * img_list.length % 2)
   }
   // Underflow fix
   if (pos <= 0) {
     return 0;
   }
   // "Left" page should be selected when spread
-  if (pos%2 != 0 && spread) {
-    return pos - 1;
-  }
-  // else: is ok
-  return pos;
+  return pos - (Number(spread) * pos % 2)
 }
 
 // Image path handler
@@ -217,10 +202,10 @@ var image_handler = (function () {
   var pos = start_from;
 
   return {
-    next: function () {
+    right: function () {
       pos += 1 + Number(spread)
     },
-    prev: function () {
+    left: function () {
       pos -= 1 + Number(spread)
     },
     set_pos: function (abs_pos) {
@@ -246,32 +231,30 @@ var image_handler = (function () {
 
 //// ---- Image obtaining ---- ////
 // Delay loading
-async function delayloader(srcs) {
-  let result = []
-  for (let i=0; i<srcs.length; i++) {
-    if (srcs[i]) {
-      var img = new Image()
-      img.src = srcs[i]
-      await img.decode().catch(console.error) // Wait for loading
-      result.push(img)
+function image_loader(list){
+  async function load(src){
+    if(src) {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      return img;
     } else {
-      // Invalid src
-      result.push(null)
+      return null;
     }
   }
-  return result
+  // Todo: need to catch (and remove) all 404s
+  return Promise.all(list.map(s => load(s)));
 }
 
 // Image preloading
-async function preload(pos, direction, size=8) {
-  if (direction == "forward") {
+async function preload(pos, direction, size=6) {
+  if (direction == "right") {
     _list = img_list.slice(pos, pos + size);
   } else {
     _list = img_list.slice(pos - size, pos);
     _list.reverse();
   }
-
-  preload_imgs = await delayloader(_list);
+  return await image_loader(_list);
 }
 
 //// ---- Drawing  ---- ////
@@ -281,7 +264,7 @@ async function draw(src1, src2) {
   canvas.style.cursor = "wait";
 
   let img1, img2
-  [img1, img2] = await delayloader([src1, src2]);
+  [img1, img2] = await image_loader([src1, src2]);
 
   if (img1 && img2) {
     // width-first
@@ -290,22 +273,26 @@ async function draw(src1, src2) {
     // height-first
     h1 = img1.height * (canvas.width / img1.width);
     h2 = img2.height * (canvas.width / img2.width);
+
     if (w1 + w2 > canvas.width) {
       // shrink height limited by width
-      ratio = canvas.width / (w1+w2)
-      height_imgs = canvas.height * ratio
-      ctx.drawImage(img1, 0, (canvas.height - height_imgs) / 2, w1 * ratio, height_imgs);
-      ctx.drawImage(img2, w1 * ratio, (canvas.height - height_imgs) / 2, w2 * ratio, height_imgs);
+      ratio = canvas.width / (w1+w2);
+      height_imgs = canvas.height * ratio;
+      img_hpos = (canvas.height - height_imgs) / 2;
+      ctx.drawImage(img1, 0,          img_hpos, w1 * ratio, height_imgs);
+      ctx.drawImage(img2, w1 * ratio, img_hpos, w2 * ratio, height_imgs);
     } else {
       // shrink width limited by height
-      ctx.drawImage(img1, (canvas.width - w1 - w2) / 2, 0, w1, canvas.height);
-      ctx.drawImage(img2, w1 + (canvas.width - w1 - w2) / 2, 0, w2, canvas.height);
+      img_wpos = (canvas.width - w1 - w2) / 2;
+      ctx.drawImage(img1, img_wpos,      0, w1, canvas.height);
+      ctx.drawImage(img2, w1 + img_wpos, 0, w2, canvas.height);
     }
 
   } else if (img1 || img2) {
     img_single = img1 || img2;
     h_img = img_single.height * (canvas.width / img_single.width);
     w_img = img_single.width * (canvas.height / img_single.height);
+
     if (w_img > canvas.width) {
       // shrink height limited by width
       ctx.drawImage(img_single, 0, (canvas.height - h_img) / 2, canvas.width, h_img);
@@ -325,9 +312,9 @@ async function draw(src1, src2) {
 // Drawing wrapper
 // Todo(bug): this drawing a bit exceeds iPad's screen.
 function redraw() {
-  // change canvas size
+  // Render canvas precisely
   // I've got why this works from https://teratail.com/questions/67020
-  c_width = document.documentElement.clientWidth - 10;
+  c_width  = document.documentElement.clientWidth  - 10;
   c_height = document.documentElement.clientHeight - 10;
   canvas.style.width = c_width + "px";
   canvas.style.height = c_height + "px";
@@ -352,10 +339,10 @@ function pagemove(direction, pos=null) {
   if (pos != null) {
     image_handler.set_pos(pos);
   } else {
-    if (direction == "next") {
-      image_handler.next();
-    } else if (direction == "prev") {
-      image_handler.prev();
+    if (direction == "right") {
+      image_handler.right();
+    } else if (direction == "left") {
+      image_handler.left();
     }
   }
 
@@ -370,12 +357,12 @@ function pagemove(direction, pos=null) {
   redraw();
 
   // Preload
-  // REFACT? need to separate semantic of "next" in moving and preloading context
-  if (direction == "next" || direction == "both") {
-    preload(pos, "forward");
+  // REFACT? need to separate semantic of "right" in moving and preloading context
+  if (direction == "right" || direction == "both") {
+    preload(pos, "right");
   }
-  if (direction == "prev" || direction == "both") {
-    preload(pos, "back");
+  if (direction == "left" || direction == "both") {
+    preload(pos, "left");
   }
 }
 
@@ -386,10 +373,10 @@ canvas.addEventListener("click", (e) => {
     x: e.clientX - rect.left,
     y: e.clientY - rect.top,
   };
-  if (canvas.width - point.x * expansion > canvas.width * 0.6) {
-    pagemove("prev");
-  } else if (canvas.width - point.x * expansion < canvas.width * 0.4) {
-    pagemove("next");
+  if (canvas.width - point.x * expansion > canvas.width * 0.6) { // 40% Right
+    pagemove("left");
+  } else if (canvas.width - point.x * expansion < canvas.width * 0.4) { // 40% Left
+    pagemove("right");
   }
 });
 
@@ -399,12 +386,17 @@ function keyboardEvent(event) {
   if (event.type === "keydown") {
     switch(event.code) {
       case "ArrowLeft":
-        pagemove("prev"); break;
+        pagemove("left");
+        break;
+
       case "ArrowRight":
-        pagemove("next"); break;
+        pagemove("right");
+        break;
+
       case "Escape":
       case "KeyQ":
-        history.back(); break;
+        history.back();
+        break;
     }
   }
 }
@@ -421,9 +413,9 @@ function wheelEvent(event) {
       dY = event.deltaY;
     }
     if (dY < 0) {
-      pagemove("prev");
+      pagemove("left");
     } else {
-      pagemove("next");
+      pagemove("right");
     }
   }
 }
@@ -435,8 +427,14 @@ window.onresize = redraw;
 
 // Image list preparation
 list_init();
-// Go to starting point
-pagemove("next", pos=start_from);
+
+// Preload
+if (r2l) {
+  pagemove("left", pos=start_from)
+} else{
+  pagemove("right", pos=start_from)
+}
+
 // Draw the canvas
 redraw();
 
