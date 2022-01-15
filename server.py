@@ -34,6 +34,10 @@ from settings import *
 # Flask initialization
 app = Flask(__name__)
 app.secret_key = "fmfm"
+config = {'SESSION_COOKIE_HTTPONLY': True, 'SESSION_COOKIE_SAMESITE': "Lax"}
+app.config.from_mapping(config)
+
+# Hostname (just for showing)
 hostname = socket.gethostname()
 
 

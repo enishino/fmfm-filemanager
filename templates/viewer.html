@@ -84,9 +84,12 @@ div.menu {
             ↩Back
             </a>
         </li>
+        <li class="nav-item nav-link">
+            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_fileinfo', number=data['number']) }}">
+                ✎
+            </a>
+        </li>
         <li class="nav-item nav-link d-flex">
-            <!-- STUB! if R2L the position is hard to calculate! -->
-            <!-- ... and click where to defocus? -->
             <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
             onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
             <div class="d-flex align-items-center ms-2">/ {{ data['pagenum'] }}</div>
@@ -108,9 +111,7 @@ div.menu {
             <label class="btn btn-outline-info" for="spread">📖</label>
         </li>
         <li class="nav-item nav-link">
-            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_fileinfo', number=data['number']) }}">
-                ✎Edit
-            </a>
+            <a href="#" class="btn btn-secondary" onClick='window.open(document.getElementById("canvas").toDataURL())' id="zooming">🔍</a>
         </li>
         <li class="nav-item nav-link">
             <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
@@ -281,15 +282,35 @@ async function draw(src1, src2) {
   [img1, img2] = await delayloader([src1, src2]);
 
   if (img1 && img2) {
+    // width-first
     w1 = img1.width * (canvas.height / img1.height);
     w2 = img2.width * (canvas.height / img2.height);
-    ctx.drawImage(img1, (canvas.width - w1 - w2) / 2, 0, w1, canvas.height);
-    ctx.drawImage(img2, w1 + (canvas.width - w1 - w2) / 2, 0, w2, canvas.height);
+    // height-first
+    h1 = img1.height * (canvas.width / img1.width);
+    h2 = img2.height * (canvas.width / img2.width);
+    if (w1 + w2 > canvas.width) {
+      // shrink height limited by width
+      ratio = canvas.width / (w1+w2)
+      height_imgs = canvas.height * ratio
+      ctx.drawImage(img1, 0, (canvas.height - height_imgs) / 2, w1 * ratio, height_imgs);
+      ctx.drawImage(img2, w1 * ratio, (canvas.height - height_imgs) / 2, w2 * ratio, height_imgs);
+    } else {
+      // shrink width limited by height
+      ctx.drawImage(img1, (canvas.width - w1 - w2) / 2, 0, w1, canvas.height);
+      ctx.drawImage(img2, w1 + (canvas.width - w1 - w2) / 2, 0, w2, canvas.height);
+    }
 
   } else if (img1 || img2) {
     img_single = img1 || img2;
+    h_img = img_single.height * (canvas.width / img_single.width);
     w_img = img_single.width * (canvas.height / img_single.height);
-    ctx.drawImage(img_single, (canvas.width - w_img) / 2, 0, w_img, canvas.height);
+    if (w_img > canvas.width) {
+      // shrink height limited by width
+      ctx.drawImage(img_single, 0, (canvas.height - h_img) / 2, canvas.width, h_img);
+    } else {
+      // shrink width limited by height
+      ctx.drawImage(img_single, (canvas.width - w_img) / 2, 0, w_img, canvas.height);
+    }
 
   } else {
     console.log("No images are found.");
@@ -373,17 +394,16 @@ canvas.addEventListener("click", (e) => {
 // Keyboard interface
 // Todo: use https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap
 function keyboardEvent(event) {
-  if (event.type === "keydown" && event.code === "ArrowLeft") {
-    pagemove("prev");
-  }
-  if (event.type === "keydown" && event.code === "ArrowRight") {
-    pagemove("next");
-  }
-  if (event.type === "keydown" && event.code === "Escape") {
-    history.back();
-  }
-  if (event.type === "keydown" && event.code === "KeyQ") {
-    history.back();
+  if (event.type === "keydown") {
+    switch(event.code) {
+      case "ArrowLeft":
+        pagemove("prev"); break;
+      case "ArrowRight":
+        pagemove("next"); break;
+      case "Escape":
+      case "KeyQ":
+        history.back(); break;
+    }
   }
 }
 addEventListener("keydown", keyboardEvent);
