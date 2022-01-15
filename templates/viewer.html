@@ -110,9 +110,11 @@ div.menu {
             {% if data['spread'] %} checked {% endif %} />
             <label class="btn btn-outline-info" for="spread">📖</label>
         </li>
+        <!--
         <li class="nav-item nav-link">
             <a href="#" class="btn btn-secondary" onClick='window.open(document.getElementById("canvas").toDataURL())' id="zooming">🔍</a>
         </li>
+        -->
         <li class="nav-item nav-link">
             <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
                 ⇩DL
