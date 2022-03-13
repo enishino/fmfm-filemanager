@@ -31,7 +31,7 @@ for g in files:
     print()
     print(f'Process for {g}')
     try:
-        new_number = register_file(g, DB=get_db())
+        new_number = register_file(g, database=get_db())
     except OSError as e:
         print(str(e))
         print('Check if the DB is used by other user.')

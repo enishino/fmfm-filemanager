@@ -6,7 +6,7 @@
 
 <table class="results">
 {% for n, item in excerpt_per_book.items() %}
-<tr class="result"><td colspan="2" class="result"><span class="title">{{ titles[n] }}&nbsp;</span></td></tr>
+<tr class="result"><td colspan="2" class="result"><span class="title">{{ item['title'] }}&nbsp;</span></td></tr>
 <tr>
 <td class="hits" class="hit_img">
 <a href="{{ url_for('show', number=n) }}"><img src="{{ url_for('static', filename='thumbnails/'+n|string+'.jpg') }}" width="100" class="hit_img"></a>
@@ -14,10 +14,15 @@
 <td class="hits">
     <ul class="hits">
     {% set ns = namespace(truncated = false) %}
-    {% for k, v in item.items() %}
+    {% for k, v in item.items() if ns.truncated == false %}
     {% if loop.index < 10 %}
+    {% if k != 'title' %}
     <li class="hit"><a href="{{ url_for('show', number=n, start_from=k) }}">Page {{ k+1 }}</a>: {{ v }}</li>
-    {% else %}{% set ns.truncated = true %}{% endif %}{% endfor %}
+    {% endif %}
+    {% else %}
+    {% set ns.truncated = true %}
+    {% endif %}
+    {% endfor %}
     {% if ns.truncated %}
     <li class="hit truncated">Many matches. Results are truncated to 10.</li>
     {% endif %}
