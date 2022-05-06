@@ -8,6 +8,8 @@ import zipfile
 import sqlite3
 import shutil
 
+from contextlib import closing
+
 import poppler
 from poppler import PageRenderer
 from poppler import RenderHint
@@ -16,7 +18,24 @@ from PIL import Image, ImageOps
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
-from settings import IMG_SUFFIX, UPLOADDIR_PATH, THUMBDIR_PATH
+from settings import DATABASE_PATH, SCHEMA_PATH, IMG_SUFFIX, UPLOADDIR_PATH, THUMBDIR_PATH
+
+
+# DB Initialization
+def init_db():
+    if os.path.exists(DATABASE_PATH):
+        return
+
+    with closing(sqlite3.connect(DATABASE_PATH)) as db:
+        with open(SCHEMA_PATH, mode="r") as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+    os.makedirs(
+        os.path.dirname(os.path.abspath(__file__)) + "/static/", exist_ok=True
+    )
+    os.makedirs(UPLOADDIR_PATH, exist_ok=True)
+    os.makedirs(THUMBDIR_PATH, exist_ok=True)
 
 
 # Image generation
@@ -291,3 +310,5 @@ def refresh_entry(number, database):
 
     # Finally commit
     cursor.connection.commit()
+
+

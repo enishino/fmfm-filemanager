@@ -3,3 +3,4 @@ flask-paginate>=2021.10.29
 Pillow>=9.0.0
 python-poppler>=0.2.2
 requests>=2.27.1
+gunicorn>=20.1.0

@@ -40,13 +40,17 @@ Full-text search (PDF only)
 * Batch importing, by putting files into `inbox` folder and call `python importer.py`
 
 ## Install and run
-* Linux
-1. `git clone` this repository and `cd` into that folder
-2. `pip install -r requirements.txt`
-3. `python server.py`
-4. Access to `http://localhost:5000/` by a web browser.
+* Docker
+1. `git clone` this repository and `cd` into the folder
+2. Do `docker-compose up -d`
+3. Access to `http://localhost:8888` by a web browser.
+4. You can stop the container by `docker container stop fmfm-filemanager-python3-1`.
 
-Above method is just a makeshift. If you like this software, using application and web server is recommended (gunicorn + nginx works well in my environment.)
+* Linux (local)
+1. `git clone` this repository and `cd` into that folder
+2. `pip install -r requirements.txt` (You also need `cmake` and `poppler-cpp` package in a distro)
+3. `python server.py` or `bash run_fmfm_local.sh`
+4. Access to `http://localhost:5000/` or `http://localhost:8888/` by a web browser.
 
 ## Limitations and bugs
 ### Overall
@@ -59,3 +63,5 @@ Above method is just a makeshift. If you like this software, using application a
 ### Search
 * Full-text search with tag search is not possible yet.
 * Search by date will be (IMHO) implemented but not yet.
+### Upload
+* Making index is a heavy task and sometimes a gateway timeout happens.

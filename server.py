@@ -15,8 +15,8 @@ from werkzeug.exceptions import NotFound
 from werkzeug.datastructures import FileStorage
 
 import sqlite3
-from contextlib import closing
 
+from tools import init_db
 from tools import zipcat, pdf2img, register_file, refresh_entry
 from tools import n_gram, n_gram_to_txt, show_hit_text
 from settings import (
@@ -30,6 +30,8 @@ from settings import (
     HIDE_KEYS,
 )
 
+# DB initialization
+init_db()
 
 # Flask initialization
 app = Flask(__name__)
@@ -58,13 +60,6 @@ def close_connection(exception):
     if DB is not None:
         DB.close()
 
-
-# Initialization
-def init_db():
-    with closing(sqlite3.connect(DATABASE_PATH)) as db:
-        with app.open_resource(SCHEMA_PATH, mode="r") as f:
-            db.cursor().executescript(f.read())
-        db.commit()
 
 
 # SQlite3 Row -> Dict with error handling
@@ -374,6 +369,9 @@ def is_allowed_file(filename):
 
 
 def get_remote_file(url):
+    if url == '' or url == None:
+        return None
+
     try:
         response = requests.get(url)
     except requests.exceptions.RequestException:
@@ -553,13 +551,4 @@ def favicon():
 
 # Run
 if __name__ == "__main__":
-    if not os.path.exists(DATABASE_PATH):
-        print("Note: seems first boot. creating empty DB and folders.")
-        init_db()
-        os.makedirs(
-            os.path.dirname(os.path.abspath(__file__)) + "/static/", exist_ok=True
-        )
-        os.makedirs(UPLOADDIR_PATH, exist_ok=True)
-        os.makedirs(THUMBDIR_PATH, exist_ok=True)
-
     app.run(debug=True)
