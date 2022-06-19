@@ -104,6 +104,7 @@ def send_pil_image(
     if shrink:  # REFACT consider splitting
         imgtype = "JPEG"
         quality = 90
+        imgmode = "RGB"
 
     pil_img = pil_img.convert(imgmode)
     img_io = io.BytesIO()
