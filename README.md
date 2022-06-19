@@ -40,17 +40,21 @@ Full-text search (PDF only)
 * Batch importing, by putting files into `inbox` folder and call `python importer.py`
 
 ## Install and run
-* Docker
 1. `git clone` this repository and `cd` into the folder
-2. Do `docker-compose up -d`
-3. Access to `http://localhost:8888` by a web browser.
-4. You can stop the container by `docker container stop fmfm-filemanager-python3-1`.
+2. Modify `SECRET_KEY` to something random string in `settings.py`
+
+* Docker
+3. Do `docker-compose up -d`
+4. Access to `http://localhost:8888` by a web browser.
+5. You can stop the container by `docker container stop fmfm-filemanager-python3-1`.
 
 * Linux (local)
-1. `git clone` this repository and `cd` into that folder
-2. `pip install -r requirements.txt` (You also need `cmake` and `poppler-cpp` package in a distro)
-3. `python server.py` or `bash run_fmfm_local.sh`
-4. Access to `http://localhost:5000/` or `http://localhost:8888/` by a web browser.
+3. `pip install -r requirements.txt` (You also need `cmake` and `poppler-cpp` package in a distro)
+4. `python server.py` or `bash run_fmfm_local.sh`
+5. Access to `http://localhost:5000/` (Former) or `http://localhost:8888/` (Latter) by a web browser.
+
+## Tips
+* Caching images by nginx improves the performance. See `nginx_conf.sample` for example.
 
 ## Limitations and bugs
 ### Overall

@@ -1,6 +1,8 @@
 import os
 
 # Settings STUB!
+SECRET_KEY = 'fmfm'
+
 # Interface
 PER_PAGE_ENTRY = 50
 PER_PAGE_SEARCH = 5

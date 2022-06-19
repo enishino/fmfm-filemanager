@@ -20,6 +20,7 @@ from tools import init_db
 from tools import zipcat, pdf2img, register_file, refresh_entry
 from tools import n_gram, n_gram_to_txt, show_hit_text
 from settings import (
+    SECRET_KEY,
     DATABASE_PATH,
     SCHEMA_PATH,
     PER_PAGE_ENTRY,
@@ -35,7 +36,7 @@ init_db()
 
 # Flask initialization
 app = Flask(__name__)
-app.secret_key = "fmfm"
+app.secret_key = SECRET_KEY
 config = {"SESSION_COOKIE_HTTPONLY": True, "SESSION_COOKIE_SAMESITE": "Lax"}
 app.config.from_mapping(config)
 
