@@ -3,7 +3,6 @@
 import os
 import io
 import re
-import unicodedata
 import socket
 import requests
 
@@ -11,13 +10,12 @@ from flask import Flask, render_template, request, redirect, url_for, make_respo
 from flask import abort, flash, session, send_file, send_from_directory
 from flask import g
 from flask_paginate import Pagination, get_page_parameter
-from werkzeug.exceptions import NotFound
 from werkzeug.datastructures import FileStorage
 
 import sqlite3
 
-from tools import init_db
-from tools import zipcat, pdf2img, register_file, refresh_entry
+from tools import init_db, sqlresult_to_an_entry
+from tools import zipcat, pdf2img, register_file, refresh_entry, remove_entry
 from tools import n_gram, n_gram_to_txt, show_hit_text
 from settings import (
     SECRET_KEY,
@@ -60,15 +58,6 @@ def close_connection(exception):
     DB = getattr(g, "_database", None)
     if DB is not None:
         DB.close()
-
-
-# SQlite3 Row -> Dict with error handling
-def sqlresult_to_an_entry(result):
-    try:
-        data = dict(result)
-        return data
-    except TypeError:
-        raise NotFound
 
 
 # Mini tools
@@ -502,46 +491,22 @@ def edit_fileinfo(number):
 # Remove entry
 # for foolproof this cannot be called by GET.
 @app.route("/remove", methods=["POST"])
-def remove_entry():
+def remove_wrapper():
     if request.method == "POST":
         form_data = dict(request.form.items())
         number = form_data["number"]
-        cursor = get_db().cursor()
-
-        # Choose the entry
-        cursor.execute("select filetype from books where number = ?", (number,))
-        data = sqlresult_to_an_entry(cursor.fetchone())
-        filetype = data["filetype"]
-
-        # Deleting
-        # * slow! what is the reason?
         try:
-            cursor.execute("delete from books where number = ?", (number,))
-            cursor.execute("delete from fts where number = ?", (number,))
+            remove_entry(number, get_db())
         except Exception as e:
             return flash_and_go(f"SQL Error {e}", "failed", url_for("index"))
 
-        try:
-            # Remove the book file
-            os.remove(
-                os.path.join(app.config["UPLOAD_FOLDER"], str(number) + "." + filetype)
-            )
-            # Remove thumbnail image
-            os.remove(
-                os.path.join(app.config["THUMBNAIL_FOLDER"], str(number) + ".jpg")
-            )
-        except FileNotFoundError:
-            pass
-
-        cursor.connection.commit()
         return flash_and_go(
             f"File #{number} was successfully removed", "success", url_for("index")
         )
 
-
 # Generate thumbnail and text index
 @app.route("/refresh/<int:number>")
-def refresh_caller(number):
+def refresh_wrapper(number):
     try:
         refresh_entry(number, get_db())
         return flash_and_go(

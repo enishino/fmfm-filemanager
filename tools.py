@@ -28,6 +28,7 @@ from bs4 import BeautifulSoup
 # Import from web
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import NotFound
 
 from settings import (
     DATABASE_PATH,
@@ -53,6 +54,13 @@ def init_db():
     os.makedirs(UPLOADDIR_PATH, exist_ok=True)
     os.makedirs(THUMBDIR_PATH, exist_ok=True)
 
+# SQlite3 Row -> Dict with error handling
+def sqlresult_to_an_entry(result):
+    try:
+        data = dict(result)
+        return data
+    except TypeError:
+        raise NotFound
 
 # Image generation
 def pdf2img(filename, page=0, dpi=192, antialias=True):
@@ -385,4 +393,31 @@ def refresh_entry(book_number, database):
     cursor.execute("update books set md5 = ? where number = ?", (hash_md5, book_number))
 
     # Finally commit
+    cursor.connection.commit()
+
+def remove_entry(number, database):
+    cursor = database.cursor()
+
+    # Choose the entry
+    cursor.execute("select filetype from books where number = ?", (number,))
+    data = sqlresult_to_an_entry(cursor.fetchone())
+    filetype = data["filetype"]
+
+    # Deleting
+    # * slow! what is the reason?
+    cursor.execute("delete from books where number = ?", (number,))
+    cursor.execute("delete from fts where number = ?", (number,))
+
+    try:
+        # Remove the book file
+        os.remove(
+            os.path.join(UPLOADDIR_PATH, str(number) + "." + filetype)
+        )
+        # Remove thumbnail image
+        os.remove(
+            os.path.join(THUMBDIR_PATH, str(number) + ".jpg")
+        )
+    except FileNotFoundError:
+        pass
+
     cursor.connection.commit()

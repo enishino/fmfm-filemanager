@@ -9,7 +9,7 @@
     {% if not row.hide %}
         <li class="item">
         <div class="parent">
-        <a href="{{ url_for('refresh_caller', number=row.number) }}">
+        <a href="{{ url_for('refresh_wrapper', number=row.number) }}">
         <span class="action refresh">↺</span>
         </a>
         <a href="{{ url_for('edit_fileinfo', number=row.number) }}">
