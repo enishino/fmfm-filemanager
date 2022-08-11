@@ -62,7 +62,6 @@ def close_connection(exception):
         DB.close()
 
 
-
 # SQlite3 Row -> Dict with error handling
 def sqlresult_to_an_entry(result):
     try:
@@ -299,24 +298,34 @@ def search():
 # Show the file
 @app.route("/show/<int:number>", defaults={"start_from": 0})
 @app.route("/show/<int:number>/<int:start_from>")
+@app.route("/show/<int:number>/<float:start_from>")
 def show(number, start_from):
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
 
-    if request.referrer is None or "edit" in request.referrer:
-        prev_url = url_for("index")
-    else:
-        prev_url = request.referrer
-
-    if data["pagenum"] is None:
-        return flash_and_go(
-            "Page number is not set. Please refresh the entry", "failed", prev_url
+    if data["filetype"] == "epub":
+        return render_template(
+            "epub_bibi.html",
+            title=data["title"],
+            book=str(number) + "." + data["filetype"],
+            iipp=float(start_from) + 0.001,  # Workaround for correct positioning
         )
 
-    return render_template(
-        "viewer.html", data=data, start_from=start_from, prev_url=prev_url
-    )
+    else:
+        if request.referrer is None or "edit" in request.referrer:
+            prev_url = url_for("index")
+        else:
+            prev_url = request.referrer
+
+        if data["pagenum"] is None:
+            return flash_and_go(
+                "Page number is not set. Please refresh the entry", "failed", prev_url
+            )
+
+        return render_template(
+            "viewer.html", data=data, start_from=start_from, prev_url=prev_url
+        )
 
 
 # Returns the original file
@@ -371,7 +380,7 @@ def is_allowed_file(filename):
 
 
 def get_remote_file(url):
-    if url == '' or url == None:
+    if url == "" or url == None:
         return None
 
     try:

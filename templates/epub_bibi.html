@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html id="bibi">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+		<title>{{ title }}</title>
+		<!-- # Bibi | EPUB Reader on your website. : © Satoru Matsushima - https://bibi.epub.link or https://github.com/satorumurmur/bibi / Licensed under the MIT License - https://github.com/satorumurmur/bibi/blob/master/LICENSE -->
+        <!-- Modified by ys-clarry to adopt with FMFM -->
+
+		<link id="bibi-style" rel="stylesheet" href="/static/Bibi-v1.2.0/bibi/resources/styles/bibi.css" />
+		<link id="bibi-dress" rel="stylesheet" href="/static/Bibi-v1.2.0/bibi/wardrobe/everyday/bibi.dress.css" />
+		<script id="bibi-script" src="/static/Bibi-v1.2.0/bibi/resources/scripts/bibi.js"></script>
+		<script id="bibi-preset" src="/static/Bibi-v1.2.0/bibi/presets/default.js"></script>
+
+        <script>
+        Bibi.preset({
+            "bookshelf" 			   : "../../../documents",
+			"base-font-size"           : "18",
+            "website-name-in-title"    : "FMFM", 
+            "website-name-in-menu"     : "FMFM", 
+            "website-href"             : location.protocol + "//" + location.host,
+        })
+
+        R.StartOn = {
+            IIPP: {{ iipp }},
+        };
+        </script>
+	</head>
+
+
+	<body data-bibi-book="{{ book }}">
+		<div id="bibi-book-data" data-bibi-book-mimetype="application/epub+zip" hidden="hidden">
+		</div>
+	</body>
+
+</html>

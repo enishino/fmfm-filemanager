@@ -6,7 +6,7 @@ CREATE TABLE "books" (
     "spread" INTEGER,
 	"md5"	TEXT,
     "filetype" TEXT,
-    "pagenum" INTEGER,
+    "pagenum" REAL,
 	"hide"	INTEGER,
 	"state_num"	INTEGER,
 	"document_date"	TEXT,

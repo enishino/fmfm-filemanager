@@ -7,7 +7,7 @@ import shutil
 import hashlib
 
 from settings import *
-from tools import zipcat, pdf2img, pdf2ngram, register_file, refresh_entry
+from tools import register_file, refresh_entry
 
 database_path='data/data.db'
 inbox ='inbox'

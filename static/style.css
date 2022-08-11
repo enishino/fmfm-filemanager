@@ -89,6 +89,10 @@ div.parent {
     background-color: yellow;
     color: white;
 }
+.epub {
+    background-color: violet;
+    color: white;
+}
 a.tag {
     border-radius: 5px;
     padding: 5px;

@@ -16,13 +16,14 @@
     {% set ns = namespace(truncated = false) %}
     {% for k, v in item.items() if ns.truncated == false %}
     {% if loop.index < 10 %}
-    {% if k != 'title' %}
-    <li class="hit"><a href="{{ url_for('show', number=n, start_from=k) }}">Page {{ k+1 }}</a>: {{ v }}</li>
-    {% endif %}
+        {% if k != 'title' %}
+        <li class="hit"><a href="{{ url_for('show', number=n, start_from=k) }}">Page {{ (k+1)|int }}</a>: {{ v }}</li>
+        {% endif %}
     {% else %}
-    {% set ns.truncated = true %}
+        {% set ns.truncated = true %}
     {% endif %}
     {% endfor %}
+
     {% if ns.truncated %}
     <li class="hit truncated">Many matches. Results are truncated to 10.</li>
     {% endif %}

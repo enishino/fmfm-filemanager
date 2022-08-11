@@ -1,24 +1,42 @@
 #!/usr/bin/env python3
 
+# Common
 import os
 import re
+import io
 import unicodedata
 import hashlib
 import zipfile
-import sqlite3
 import shutil
 
+# DB
+import sqlite3
 from contextlib import closing
 
+# ZIP
+from PIL import Image, ImageOps
+
+# PDF
 import poppler
 from poppler import PageRenderer
 from poppler import RenderHint
-from PIL import Image, ImageOps
 
+# EPUB
+from ebooklib import epub
+from bs4 import BeautifulSoup
+
+# Import from web
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 
-from settings import DATABASE_PATH, SCHEMA_PATH, IMG_SUFFIX, UPLOADDIR_PATH, THUMBDIR_PATH
+from settings import (
+    DATABASE_PATH,
+    SCHEMA_PATH,
+    IMG_SUFFIX,
+    UPLOADDIR_PATH,
+    THUMBDIR_PATH,
+    EPUB_CHUNK_SPLIT,
+)
 
 
 # DB Initialization
@@ -31,9 +49,7 @@ def init_db():
             db.cursor().executescript(f.read())
         db.commit()
 
-    os.makedirs(
-        os.path.dirname(os.path.abspath(__file__)) + "/static/", exist_ok=True
-    )
+    os.makedirs(os.path.dirname(os.path.abspath(__file__)) + "/static/", exist_ok=True)
     os.makedirs(UPLOADDIR_PATH, exist_ok=True)
     os.makedirs(THUMBDIR_PATH, exist_ok=True)
 
@@ -82,52 +98,13 @@ def zipcat(filename, page=None):
             return img, imgtype, imgmode
 
 
-# Text indexing
-non2b_chars = r"[\u3041-\u3096\u30A1-\u30FA々〇〻\u3400-\u9FFF\uF900-\uFAFF]|[\uD840-\uD87F\uDC00-\uDFFF\u3000-\u303F]"
-
-
-def pdf2ngram(filename, gram_n=2):
-    text_per_page = pdf2txt(filename)
-    ngram_per_page = []
-    for t in text_per_page:
-        txt_ary = re.split(r"[\s\-\/\;]", t)
-        if max([len(a) for a in txt_ary]) > 40 or re.match(non2b_chars, t):
-            # Contains non-western language
-            ngram_per_page.append(n_gram(t, gram_n=gram_n))
-        else:
-            # The text is already tokenized (european lang.).
-            ngram_per_page.append(t)
-    return ngram_per_page
-
-
-def pdf2txt(pdf_path):
-    pdf = poppler.load_from_file(pdf_path)
-    pages = []
-    for i in range(pdf.pages):
-        # Extraction
-        t = pdf.create_page(i).text()
-        # Join to one line
-        t = "".join(t.splitlines()).strip()
-        # Remove extra whitespaces
-        t = re.sub("[ 　\t,\"'●■□一]+", " ", t)
-        t = re.sub(". . ", "", t)
-        # Remove errornous whitespaces in Japanese OCR
-        for _ in range(3):
-            t = re.sub(f"({non2b_chars}+)[ \t　]({non2b_chars}+)", "\\1\\2", t)
-        # Remove ligartures (fi, fl and so on)
-        t = unicodedata.normalize("NFKC", t)
-        # Remove errornous dots
-        t = re.sub(r"[\.,\"'●■□~=ー\−][\.,\"'●■□~=ー\−]+", "", t)
-        # Finally append
-        pages.append(t)
-    return pages
-
-
+# Text to N-grammed text
 def n_gram(txt, gram_n=2):
     splitted = [txt[n : n + gram_n] for n in range(len(txt) - gram_n + 1)]
     return " ".join(splitted)
 
 
+# N-Grammed text to normal text
 def n_gram_to_txt(txt):
     txt_ary = re.split(r"[\s\-\/\;]", txt)
     if max([len(a) for a in txt_ary]) < 3:
@@ -140,6 +117,58 @@ def n_gram_to_txt(txt):
         return txt
 
 
+# Memo for 2-byte characters
+twobyte_chars = r"[\u3041-\u3096\u30A1-\u30FA々〇〻\u3400-\u9FFF\uF900-\uFAFF]|[\uD840-\uD87F\uDC00-\uDFFF\u3000-\u303F]"
+
+
+# Text to n-gram, if 2-byte chars are contained.
+# * Text -> Text but こんにちは -> こん んに にち ちは
+def ngram_if_2byte(text, gram_n=2):
+    txt_ary = re.split(r"[\s\-\/\;]", text)
+    if max([len(a) for a in txt_ary]) > 40 or re.match(twobyte_chars, text):
+        # Contains non-western language
+        return n_gram(text, gram_n=gram_n)
+    else:
+        # The text is already tokenized (european lang.).
+        return text
+
+
+# Cleanup dirty OCRed text
+def clean_ocr_text(t):
+    # Join to one line
+    t = "".join(t.splitlines()).strip()
+
+    # Remove extra whitespaces
+    t = re.sub("[ 　\t,\"'●■□一]+", " ", t)
+    t = re.sub(". . ", "", t)
+
+    # Remove errornous whitespaces in Japanese OCR
+    for _ in range(3):
+        t = re.sub(f"({twobyte_chars}+)[ \t　]({twobyte_chars}+)", "\\1\\2", t)
+
+    # Remove ligartures (fi, fl and so on)
+    t = unicodedata.normalize("NFKC", t)
+
+    # Remove errornous dots
+    t = re.sub(r"[\.,\"'●■□~=ー\−][\.,\"'●■□~=ー\−]+", "", t)
+
+    return t
+
+
+# Extract PDF text per page
+def pdf2txt(pdf_path):
+    pdf = poppler.load_from_file(pdf_path)
+    pages = []
+    for i in range(pdf.pages):
+        # Extraction
+        t = pdf.create_page(i).text()
+        # Clean up
+        t = clean_ocr_text(t)
+        # Finally append
+        pages.append(t)
+    return pages
+
+
 # Text -> excerpted text (in search result)
 def excerpt(txt, start, end, length):
     is_asian = any([True for c in txt if unicodedata.east_asian_width(c) in "FWA"])
@@ -150,6 +179,7 @@ def excerpt(txt, start, end, length):
     return txt[start:end]
 
 
+# Search result to showable format
 def show_hit_text(text, query):
     hit_excerpt = ""
     for q in query.split(" "):
@@ -245,46 +275,92 @@ def register_file(a_file, database):
     return new_number
 
 
-def refresh_entry(number, database):
+# Make a thumbnail and text index
+def refresh_entry(book_number, database):
     cursor = database.cursor()
-    cursor.execute("select * from books where number = ?", (number,))
+    cursor.execute("select * from books where number = ?", (book_number,))
     entry = cursor.fetchone()
 
     if entry is None:
         raise IndexError
 
     filetype = entry["filetype"]
-    filename = str(number) + f".{filetype}"
-    file_thumbnail = str(number) + ".jpg"
+    filename = str(book_number) + f".{filetype}"
+    file_thumbnail = str(book_number) + ".jpg"
     file_real = os.path.join(UPLOADDIR_PATH, filename)
     thumb_real = os.path.join(THUMBDIR_PATH, file_thumbnail)
 
     if filetype == "pdf":
-        # Number of pages
         pagenum = poppler.load_from_file(file_real).pages
-        cursor.execute(
-            "update books set pagenum = ? where number = ?", (pagenum, number)
-        )
-
-        # Generate thumbnail
         thumbnail = pdf2img(file_real)
 
         # Generate text index
         # * Maybe really slow. consider optimization.
-        page_ngram = pdf2ngram(file_real)
-        index_data = tuple((number, p, t) for p, t in enumerate(page_ngram))
-        cursor.execute("delete from fts where number = ?", (number,))
+        page_ngram = [ngram_if_2byte(p) for p in pdf2txt(file_real)]
+        index_data = tuple((book_number, pos, text) for pos, text in enumerate(page_ngram))
+        cursor.execute("delete from fts where number = ?", (book_number,))
         cursor.executemany(
             "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
         )
 
     if filetype == "zip":
         pagenum = zipcat(file_real)
-        cursor.execute(
-            "update books set pagenum = ? where number = ?", (pagenum, number)
-        )
-        # Generate thumbnail
         thumbnail, imgtype, imgmode = zipcat(file_real, page=0)
+
+    if filetype == "epub":
+        book = epub.read_epub(file_real)
+
+        # Thumbnail
+        cover_items = [i for i in book.get_items() if type(i) == epub.EpubCover]
+        if cover_items:
+            # EPUB3
+            cover_bytes = cover_items[0].get_content()
+        else:
+            # EPUB2
+            cover_id = book.get_metadata("OPF", "cover")[0][1]["content"]
+            cover_bytes = book.get_item_with_id(cover_id).get_content()
+        thumbnail = Image.open(io.BytesIO(cover_bytes))
+
+        # N-Gram and insert into FTS
+        # * We need to reorder the items specified in spine.
+        spine_list = [s[0] for s in book.spine if s[1] == "yes"]
+        items_in_spine = [book.get_item_with_id(i) for i in spine_list]
+        pagenum = len(items_in_spine)
+
+        # * Each 'item' of epub can be long, so here to split them into small chunks.
+        index_data = []
+        for pos, section in enumerate(items_in_spine):
+            content = section.get_body_content().decode()
+            soup = BeautifulSoup(content, features="html.parser")
+            text = soup.get_text()
+            lines = [line.strip() for line in text.splitlines()]
+            text = " ".join(lines)
+            chunk_length = len(text) // EPUB_CHUNK_SPLIT
+            if chunk_length == 0:
+                continue
+
+            chunks = [
+                text[i : i + chunk_length] for i in range(0, len(text), chunk_length)
+            ]
+            for minipos, chunk in enumerate(chunks):
+                minipos = round(minipos / EPUB_CHUNK_SPLIT, 2)
+                chunk_ngram = ngram_if_2byte(chunk)
+                index_data.append(
+                    (
+                        book_number,
+                        (pos + minipos),
+                        chunk_ngram,
+                    )
+                )
+
+        index_data = tuple(index_data)
+        cursor.execute("delete from fts where number = ?", (book_number,))
+        cursor.executemany(
+            "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
+        )
+
+    # Page number update
+    cursor.execute("update books set pagenum = ? where number = ?", (pagenum, book_number))
 
     # Shrink and save thumbnail
     thumbnail = thumbnail.convert("RGB")
@@ -293,22 +369,20 @@ def refresh_entry(number, database):
 
     # Spread view: 1=True, 0=False
     if entry["spread"] is None:
-        cursor.execute("update books set spread = ? where number = ?", (True, number))
+        cursor.execute("update books set spread = ? where number = ?", (True, book_number))
 
     # L2R view: 1=True, 0=False
     if entry["r2l"] is None:
-        cursor.execute("update books set r2l = ? where number = ?", (False, number))
+        cursor.execute("update books set r2l = ? where number = ?", (False, book_number))
 
     # Hiding: 1=True, 0=False
     if entry["hide"] is None:
-        cursor.execute("update books set hide = ? where number = ?", (False, number))
+        cursor.execute("update books set hide = ? where number = ?", (False, book_number))
 
     # Update MD5 hash
     with open(file_real, "rb") as f:
         hash_md5 = hashlib.md5(f.read()).hexdigest()
-    cursor.execute("update books set md5 = ? where number = ?", (hash_md5, number))
+    cursor.execute("update books set md5 = ? where number = ?", (hash_md5, book_number))
 
     # Finally commit
     cursor.connection.commit()
-
-

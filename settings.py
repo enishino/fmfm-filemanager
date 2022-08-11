@@ -1,7 +1,7 @@
 import os
 
 # Settings STUB!
-SECRET_KEY = 'fmfm'
+SECRET_KEY = "fmfm"
 
 # Interface
 PER_PAGE_ENTRY = 50
@@ -17,6 +17,9 @@ HIDE_KEYS = [
     "modified_date",
 ]
 
+# Search settings
+EPUB_CHUNK_SPLIT = 100
+
 # Directories
 script_dir = os.path.dirname(os.path.abspath(__file__))
 UPLOADDIR_PATH = script_dir + "/static/documents"
@@ -25,5 +28,9 @@ DATABASE_PATH = script_dir + "/data/data.db"
 SCHEMA_PATH = script_dir + "/data/schema.sql"
 
 # Filetype settings
-ALLOWED_EXT_MIMETYPE = {"application/pdf": "pdf", "application/zip": "zip"}
+ALLOWED_EXT_MIMETYPE = {
+    "application/pdf": "pdf",
+    "application/zip": "zip",
+    "application/epub+zip": "epub",
+}
 IMG_SUFFIX = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gjf")
