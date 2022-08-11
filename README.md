@@ -16,7 +16,7 @@ Tiny HTML-based document viewer (for PDF and zip) is included. Capabilities:
 
 <img src="images/2_viewer.png" alt="Viewer" width="500px" />
 
-Epub reading is powered by [Bibi][https://github.com/satorumurmur/bibi]. (This is a fantastic software!)
+Epub reading is powered by [Bibi](https://github.com/satorumurmur/bibi). (This is a fantastic software!)
 
 ## Search
 Full-text search (PDF and epub)
@@ -44,7 +44,7 @@ Full-text search (PDF and epub)
 ## Install and run
 1. `git clone` this repository and `cd` into the folder
 1. Modify `SECRET_KEY` to something random string in `settings.py`
-1. Download `Bibi-v1.2.0.zip` from [here][https://github.com/satorumurmur/bibi/releases/tag/v1.2.0], unpack the file and move `Bibi-v1.2.0` folder into `static` folder.
+1. Download `Bibi-v1.2.0.zip` from [Bibi releases](https://github.com/satorumurmur/bibi/releases/tag/v1.2.0), unpack the file and move `Bibi-v1.2.0` folder into `static` folder.
 
 * Docker
 1. Do `docker-compose up -d`
