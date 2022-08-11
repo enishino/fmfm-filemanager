@@ -517,7 +517,7 @@ def remove_entry():
         # * slow! what is the reason?
         try:
             cursor.execute("delete from books where number = ?", (number,))
-            cursor.execute("delete from fts where number like ?", (number,))
+            cursor.execute("delete from fts where number = ?", (number,))
         except Exception as e:
             return flash_and_go(f"SQL Error {e}", "failed", url_for("index"))
 
