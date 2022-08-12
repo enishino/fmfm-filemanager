@@ -419,13 +419,13 @@ def upload_file():
 
             try:
                 new_number = register_file(a_file, database=get_db())
-                refresh_entry(new_number, database=get_db())
+                refresh_entry(new_number, database=get_db(), extract_title=True)
                 flash(
                     f"{a_file.filename} was registered as #{new_number}",
                     "success",
                 )
 
-            except (TypeError, OSError, KeyError) as e:
+            except (TypeError, OSError, KeyError, IndexError) as e:
                 flash(str(e), "failed")
                 continue
             except sqlite3.Error as e:
@@ -503,6 +503,7 @@ def remove_wrapper():
         return flash_and_go(
             f"File #{number} was successfully removed", "success", url_for("index")
         )
+
 
 # Generate thumbnail and text index
 @app.route("/refresh/<int:number>")

@@ -54,13 +54,14 @@ def init_db():
     os.makedirs(UPLOADDIR_PATH, exist_ok=True)
     os.makedirs(THUMBDIR_PATH, exist_ok=True)
 
+
 # SQlite3 Row -> Dict with error handling
 def sqlresult_to_an_entry(result):
     try:
-        data = dict(result)
-        return data
+        return dict(result)
     except TypeError:
-        raise NotFound
+        raise IndexError
+
 
 # Image generation
 def pdf2img(filename, page=0, dpi=192, antialias=True):
@@ -284,13 +285,13 @@ def register_file(a_file, database):
 
 
 # Make a thumbnail and text index
-def refresh_entry(book_number, database):
+def refresh_entry(book_number, database, extract_title=False):
     cursor = database.cursor()
     cursor.execute("select * from books where number = ?", (book_number,))
     entry = cursor.fetchone()
 
     if entry is None:
-        raise IndexError
+        raise IndexError(f"No entry #{book_number} found")
 
     filetype = entry["filetype"]
     filename = str(book_number) + f".{filetype}"
@@ -298,14 +299,24 @@ def refresh_entry(book_number, database):
     file_real = os.path.join(UPLOADDIR_PATH, filename)
     thumb_real = os.path.join(THUMBDIR_PATH, file_thumbnail)
 
+    book_title = entry["title"]
+
+    # ---- FILE TYPE DEPENDENT ---- #
     if filetype == "pdf":
-        pagenum = poppler.load_from_file(file_real).pages
+        pdf = poppler.load_from_file(file_real)
+
+        # Metadata Extraction
+        pagenum = pdf.pages
         thumbnail = pdf2img(file_real)
+        if extract_title and pdf.title:
+            book_title = pdf.title
 
         # Generate text index
         # * Maybe really slow. consider optimization.
         page_ngram = [ngram_if_2byte(p) for p in pdf2txt(file_real)]
-        index_data = tuple((book_number, pos, text) for pos, text in enumerate(page_ngram))
+        index_data = tuple(
+            (book_number, pos, text) for pos, text in enumerate(page_ngram)
+        )
         cursor.execute("delete from fts where number = ?", (book_number,))
         cursor.executemany(
             "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
@@ -313,21 +324,29 @@ def refresh_entry(book_number, database):
 
     if filetype == "zip":
         pagenum = zipcat(file_real)
-        thumbnail, imgtype, imgmode = zipcat(file_real, page=0)
+        thumbnail, _, _ = zipcat(file_real, page=0)
 
     if filetype == "epub":
         book = epub.read_epub(file_real)
 
         # Thumbnail
-        cover_items = [i for i in book.get_items() if type(i) == epub.EpubCover]
-        if cover_items:
-            # EPUB3
-            cover_bytes = cover_items[0].get_content()
-        else:
-            # EPUB2
-            cover_id = book.get_metadata("OPF", "cover")[0][1]["content"]
-            cover_bytes = book.get_item_with_id(cover_id).get_content()
-        thumbnail = Image.open(io.BytesIO(cover_bytes))
+        try:
+            cover_items = [i for i in book.get_items() if type(i) == epub.EpubCover]
+            if cover_items:
+                # EPUB3
+                cover_item = cover_items[0]
+            else:
+                # EPUB2
+                cover_metadata = book.get_metadata("OPF", "cover")
+                cover_id = cover_metadata[0][1]["content"]
+                cover_item = book.get_item_with_id(cover_id)
+
+            cover_bytes = cover_item.get_content()
+            thumbnail = Image.open(io.BytesIO(cover_bytes))
+
+        except IndexError:
+            # No thumbnail image was found.
+            thumbnail = Image.new("RGB", (100, 140))
 
         # N-Gram and insert into FTS
         # * We need to reorder the items specified in spine.
@@ -336,6 +355,7 @@ def refresh_entry(book_number, database):
         pagenum = len(items_in_spine)
 
         # * Each 'item' of epub can be long, so here to split them into small chunks.
+        # TODO: section size dependent chunk size?
         index_data = []
         for pos, section in enumerate(items_in_spine):
             content = section.get_body_content().decode()
@@ -367,25 +387,44 @@ def refresh_entry(book_number, database):
             "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
         )
 
+        # Title and author from metadata
+        book_title_meta = book.get_metadata("DC", "title")
+        if book_title_meta and extract_title:
+            book_title = book_title_meta[0][0]
+
+    # ---- COMMON ---- #
     # Page number update
-    cursor.execute("update books set pagenum = ? where number = ?", (pagenum, book_number))
+    cursor.execute(
+        "update books set pagenum = ? where number = ?", (pagenum, book_number)
+    )
 
     # Shrink and save thumbnail
     thumbnail = thumbnail.convert("RGB")
     thumbnail = ImageOps.contain(thumbnail, (400, 400))
     thumbnail.save(thumb_real, "JPEG")
 
+    # Book title update
+    cursor.execute(
+        "update books set title = ? where number = ?", (book_title, book_number)
+    )
+
     # Spread view: 1=True, 0=False
     if entry["spread"] is None:
-        cursor.execute("update books set spread = ? where number = ?", (True, book_number))
+        cursor.execute(
+            "update books set spread = ? where number = ?", (True, book_number)
+        )
 
     # L2R view: 1=True, 0=False
     if entry["r2l"] is None:
-        cursor.execute("update books set r2l = ? where number = ?", (False, book_number))
+        cursor.execute(
+            "update books set r2l = ? where number = ?", (False, book_number)
+        )
 
     # Hiding: 1=True, 0=False
     if entry["hide"] is None:
-        cursor.execute("update books set hide = ? where number = ?", (False, book_number))
+        cursor.execute(
+            "update books set hide = ? where number = ?", (False, book_number)
+        )
 
     # Update MD5 hash
     with open(file_real, "rb") as f:
@@ -394,6 +433,7 @@ def refresh_entry(book_number, database):
 
     # Finally commit
     cursor.connection.commit()
+
 
 def remove_entry(number, database):
     cursor = database.cursor()
@@ -410,13 +450,9 @@ def remove_entry(number, database):
 
     try:
         # Remove the book file
-        os.remove(
-            os.path.join(UPLOADDIR_PATH, str(number) + "." + filetype)
-        )
+        os.remove(os.path.join(UPLOADDIR_PATH, str(number) + "." + filetype))
         # Remove thumbnail image
-        os.remove(
-            os.path.join(THUMBDIR_PATH, str(number) + ".jpg")
-        )
+        os.remove(os.path.join(THUMBDIR_PATH, str(number) + ".jpg"))
     except FileNotFoundError:
         pass
 

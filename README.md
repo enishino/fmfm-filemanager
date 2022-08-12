@@ -39,7 +39,11 @@ Full-text search (PDF and epub)
 ## Other features
 * Multi-file uploading
 * Ignores already registered file when uploading (by MD5 hash)
-* Batch importing, by putting files into `inbox` folder and call `python importer.py`
+* Tiny tool for batch processing (`fmfm_util.py`) is included.
+ - `fmfm_util.py import` ... to import all the files from `inbox` folder.
+ - `fmfm_util.py remove 1 2 3` ... to remove specified books from DB.
+ - `fmfm_util.py update 1 2 3` ... to update the metadata in the DB.
+ - `fmfm_util.py update_title 1 2 3` ... to update the metadata, and title is replaced by the file's metadata.
 
 ## Install and run
 1. `git clone` this repository and `cd` into the folder
@@ -57,7 +61,7 @@ Full-text search (PDF and epub)
 1. Access to `http://localhost:5000/` (Former) or `http://localhost:8888/` (Latter) by a web browser.
 
 ## Tips
-* Caching images by nginx improves the performance. See `nginx_conf.sample` for example.
+* Caching images and passthrough `static` files by nginx improves the performance. See `nginx_conf.sample` for example.
 
 ## Limitations and bugs
 ### Overall
