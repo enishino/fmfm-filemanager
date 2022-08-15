@@ -23,9 +23,11 @@
             "website-href"             : location.protocol + "//" + location.host,
         })
 
+        {% if iipp != 0 %}
         R.StartOn = {
-            IIPP: {{ iipp }},
+            IIPP: {{ iipp + 0.001 }},
         };
+        {% endif %}
         </script>
 	</head>
 

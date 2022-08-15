@@ -298,7 +298,7 @@ def show(number, start_from):
             "epub_bibi.html",
             title=data["title"],
             book=str(number) + "." + data["filetype"],
-            iipp=float(start_from) + 0.001,  # Workaround for correct positioning
+            iipp=float(start_from),
         )
 
     else:
