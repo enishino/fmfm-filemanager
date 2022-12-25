@@ -84,6 +84,28 @@ def pdf2img(filename, page=0, dpi=192, antialias=True):
     pil_image = pil_image.convert("RGB")
     return pil_image
 
+def can_be_int(s):
+    try:
+        int(s)
+        return True
+    except:
+        return False
+    
+def number_to_fixed_digits(filename):
+    numbers = [str(i) for i in range(10)]
+    states = [char in numbers for char in filename]
+    chunks = []
+    begins = 0
+    for n in range(len(states)+1):
+        if n == 0:
+            continue
+        if n == len(states) or states[n-1] != states[n]:
+            chunk = filename[begins:n]
+            if can_be_int(chunk):
+                chunk = f'{int(chunk):06d}'
+            chunks.append(chunk)
+            begins = n
+    return ''.join(chunks)
 
 def zipcat(filename, page=None):
     # *** REFACT ***  split len and get #
@@ -95,7 +117,7 @@ def zipcat(filename, page=None):
                 continue
             if i.lower().endswith(IMG_SUFFIX):
                 image_srcs.append(i)
-        image_srcs = sorted(image_srcs)
+        image_srcs = sorted(image_srcs, key=lambda l:number_to_fixed_digits(l))
         if page is None:
             return len(image_srcs)
 
