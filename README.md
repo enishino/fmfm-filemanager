@@ -1,5 +1,5 @@
 # fmfm: fast minimum file manager
-A web-based document manager/viewer upon Flask+Python. Currently PDF, zip file (including images) and epub documents are supported.
+A web-based document manager/viewer upon Flask+Python. Currently PDF, zip file (of images), markdown and epub documents are supported.
 
 **This is still in beta stage and the code is not secure. Please do not use this on public servers.**
 
@@ -9,7 +9,7 @@ Clicking thumbnail opens the viewer. The right bottom "PDF" badge jumps into the
 <img src="images/1_listview.png" alt="List of files" width="600px" />
 
 ## Viewer
-Tiny HTML-based document viewer (for PDF and zip) is included. Capabilities:
+Tiny HTML-based document viewer is included. Capabilities:
 * Single page / Spread view
 * Left-to-right / Right-to-left
 * One page shifting (to correct facing page layout)
@@ -19,7 +19,7 @@ Tiny HTML-based document viewer (for PDF and zip) is included. Capabilities:
 Epub reading is powered by [Bibi](https://github.com/satorumurmur/bibi). (This is a fantastic software!)
 
 ## Search
-Full-text search (PDF and epub)
+Full-text search (PDF, epub and markdown)
 
 <img src="images/3_search.png" alt="Search" width="500px" />
 
@@ -71,6 +71,7 @@ Full-text search (PDF and epub)
 * PDF rendering is a bit heavy task, for SBCs like raspberry pi (RPi4 handles tasks well in my house though;)
 * To suppress transfer size the result is compressed with JPEG, so the viewer shows lossy image.
 * All the image is set to be cached. Please clear browser cache if you found odd behavior.
+* Not all of markdown functionalities are supported.
 ### Search
 * Full-text search with tag search is not possible yet.
 * Search by date will be (IMHO) implemented but not yet.
