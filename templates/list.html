@@ -12,9 +12,14 @@
         <a href="{{ url_for('refresh_wrapper', number=row.number) }}">
         <span class="action refresh">↺</span>
         </a>
-        <a href="{{ url_for('edit_fileinfo', number=row.number) }}">
-        <span class="action editicon">✎</span>
+        <a href="{{ url_for('edit_metadata', number=row.number) }}">
+        <span class="action editicon">🔧</span>
         </a>
+        {% if row.filetype == 'md' %}
+        <a href="{{ url_for('edit_markdown', number=row.number) }}">
+        <span class="action noteicon">✎</span>
+        </a>
+        {% endif %}
         <a href="{{ url_for('raw', number=row.number) }}">
         <span class="filetype {{ row.filetype }}">{{ row.filetype }}</span>
         </a>

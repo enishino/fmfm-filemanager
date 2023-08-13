@@ -51,7 +51,7 @@ div.parent {
     height: 20px;
 }
 .refresh {
-    opacity: 0.0;
+    opacity: 0.2;
     left: 5px;
     top: 5px;
     background-color: cyan;
@@ -68,6 +68,16 @@ div.parent {
     color: white;
 }
 .editicon:hover {
+    opacity: 1.0
+}
+.noteicon {
+    opacity: 0.4;
+    right: 5px;
+    top: 5px;
+    background-color: pink;
+    color: white;
+}
+.noteicon:hover {
     opacity: 1.0
 }
 .filetype {
@@ -91,6 +101,10 @@ div.parent {
 }
 .epub {
     background-color: violet;
+    color: white;
+}
+.md {
+    background-color: green;
     color: white;
 }
 a.tag {
@@ -118,6 +132,14 @@ li.failed {
     color: white;
     padding-left: 10px;
     background-color: deeppink;
+}
+li.info {
+    list-style-type: "\1F6C8";
+    border-bottom: 0.5px solid white;
+    width: 50vw;
+    color: white;
+    padding-left: 10px;
+    background-color: green;
 }
 
 div.parent {

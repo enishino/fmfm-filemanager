@@ -32,5 +32,7 @@ ALLOWED_EXT_MIMETYPE = {
     "application/pdf": "pdf",
     "application/zip": "zip",
     "application/epub+zip": "epub",
+    "text/markdown": "md",
 }
+# Images in zip file
 IMG_SUFFIX = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gjf")

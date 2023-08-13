@@ -4,17 +4,19 @@
 import os
 import re
 import io
+import math
 import unicodedata
 import hashlib
 import zipfile
 import shutil
+import functools
 
 # DB
 import sqlite3
 from contextlib import closing
 
 # ZIP
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFont, ImageDraw
 
 # PDF
 import poppler
@@ -25,11 +27,20 @@ from poppler import RenderHint
 from ebooklib import epub
 from bs4 import BeautifulSoup
 
+# Markdown
+import markdown
+
+md_ext = functools.partial(
+    markdown.markdown,
+    extensions=["footnotes", "tables", "nl2br", "sane_lists", "fenced_code"],
+)
+
 # Import from web
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+# FMFM settings
 from settings import (
     DATABASE_PATH,
     SCHEMA_PATH,
@@ -84,29 +95,25 @@ def pdf2img(filename, page=0, dpi=192, antialias=True):
     pil_image = pil_image.convert("RGB")
     return pil_image
 
-def can_be_int(s):
-    try:
-        int(s)
-        return True
-    except:
-        return False
-    
-def number_to_fixed_digits(filename):
-    numbers = [str(i) for i in range(10)]
-    states = [char in numbers for char in filename]
-    chunks = []
-    begins = 0
-    for n in range(len(states)+1):
-        if n == 0:
-            continue
-        if n == len(states) or states[n-1] != states[n]:
-            chunk = filename[begins:n]
-            if can_be_int(chunk):
-                chunk = f'{int(chunk):06d}'
-            chunks.append(chunk)
-            begins = n
-    return ''.join(chunks)
 
+# To do 'numerical' sort in files in zip
+nums = re.compile("[0-9]+")
+
+
+def number_to_fixed_digits(s, digits=6):
+    match = nums.search(s)
+    if match == None:
+        return s
+    else:
+        num_with_dights = f"{int(match.group()):0{digits}d}"
+        return (
+            s[: match.start()]
+            + num_with_dights
+            + number_to_fixed_digits(s[match.end() :], digits=digits)
+        )
+
+
+# len and unzip
 def zipcat(filename, page=None):
     # *** REFACT ***  split len and get #
     with zipfile.ZipFile(filename) as archive:
@@ -117,7 +124,8 @@ def zipcat(filename, page=None):
                 continue
             if i.lower().endswith(IMG_SUFFIX):
                 image_srcs.append(i)
-        image_srcs = sorted(image_srcs, key=lambda l:number_to_fixed_digits(l))
+        image_srcs = sorted(image_srcs, key=lambda l: number_to_fixed_digits(l))
+
         if page is None:
             return len(image_srcs)
 
@@ -287,7 +295,7 @@ def register_file(a_file, database):
             )
             raise KeyError(f"Same file (No. {collision_no}) exists in the DB")
 
-        # Seems OK so I'll insert entry into DB
+        # Seems OK so I'll insert the entry into the DB
         cursor.execute(
             "insert into books (number, title, filetype, md5, tags) values (?, ?, ?, ?, ?)",
             (new_number, basename, filetype, hash_md5, ""),
@@ -322,8 +330,33 @@ def refresh_entry(book_number, database, extract_title=False):
     thumb_real = os.path.join(THUMBDIR_PATH, file_thumbnail)
 
     book_title = entry["title"]
+    index_data = []
 
     # ---- FILE TYPE DEPENDENT ---- #
+    if filetype == "zip":
+        pagenum = zipcat(file_real)
+        thumbnail, _, _ = zipcat(file_real, page=0)
+
+    if filetype == "md":
+        pagenum = 0  # STUB
+
+        # Text to FTS
+        with open(file_real) as fp:
+            md = fp.read()
+        soup = BeautifulSoup(md_ext(md), features="html.parser")
+        text = soup.get_text().strip().replace("\n", " ")
+        ngrammed = ngram_if_2byte(text)
+        index_data.append((book_number, pagenum, ngrammed))
+
+        # Generate thumbnail with text
+        thumbnail = Image.new("RGB", (100, 140), color=(255, 255, 255))
+        font = ImageFont.truetype(
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+        )
+        draw = ImageDraw.Draw(thumbnail)
+        text_w_crlf = "\n".join([text[i : i + 20] for i in range(0, 200, 20)])
+        draw.text((5, 5), text_w_crlf, "#333333", font=font)
+
     if filetype == "pdf":
         pdf = poppler.load_from_file(file_real)
 
@@ -339,14 +372,6 @@ def refresh_entry(book_number, database, extract_title=False):
         index_data = tuple(
             (book_number, pos, text) for pos, text in enumerate(page_ngram)
         )
-        cursor.execute("delete from fts where number = ?", (book_number,))
-        cursor.executemany(
-            "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
-        )
-
-    if filetype == "zip":
-        pagenum = zipcat(file_real)
-        thumbnail, _, _ = zipcat(file_real, page=0)
 
     if filetype == "epub":
         book = epub.read_epub(file_real)
@@ -378,36 +403,23 @@ def refresh_entry(book_number, database, extract_title=False):
 
         # * Each 'item' of epub can be long, so here to split them into small chunks.
         # TODO: section size dependent chunk size?
-        index_data = []
         for pos, section in enumerate(items_in_spine):
             content = section.get_body_content().decode()
             soup = BeautifulSoup(content, features="html.parser")
             text = soup.get_text()
-            lines = [line.strip() for line in text.splitlines()]
-            text = " ".join(lines)
-            chunk_length = len(text) // EPUB_CHUNK_SPLIT
-            if chunk_length == 0:
+
+            text = text.strip().replace("\n", " ")
+            if len(text) == 0:
                 continue
 
+            chunk_length = math.ceil(len(text) / EPUB_CHUNK_SPLIT)
             chunks = [
                 text[i : i + chunk_length] for i in range(0, len(text), chunk_length)
             ]
-            for minipos, chunk in enumerate(chunks):
-                minipos = round(minipos / EPUB_CHUNK_SPLIT, 2)
+            for p, chunk in enumerate(chunks):
+                minipos = round(p / EPUB_CHUNK_SPLIT, 2)
                 chunk_ngram = ngram_if_2byte(chunk)
-                index_data.append(
-                    (
-                        book_number,
-                        (pos + minipos),
-                        chunk_ngram,
-                    )
-                )
-
-        index_data = tuple(index_data)
-        cursor.execute("delete from fts where number = ?", (book_number,))
-        cursor.executemany(
-            "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
-        )
+                index_data.append((book_number, pos + minipos, chunk_ngram))
 
         # Title and author from metadata
         book_title_meta = book.get_metadata("DC", "title")
@@ -419,6 +431,14 @@ def refresh_entry(book_number, database, extract_title=False):
     cursor.execute(
         "update books set pagenum = ? where number = ?", (pagenum, book_number)
     )
+
+    # FTS update (if available)
+    if len(index_data) > 0:
+        index_data = tuple(index_data)
+        cursor.execute("delete from fts where number = ?", (book_number,))
+        cursor.executemany(
+            "insert into fts (number, page, ngram) values (?, ?, ?)", index_data
+        )
 
     # Shrink and save thumbnail
     thumbnail = thumbnail.convert("RGB")

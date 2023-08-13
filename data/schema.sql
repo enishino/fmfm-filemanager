@@ -1,4 +1,4 @@
-CREATE TABLE "books" (
+create table "books" (
 	"number"	INTEGER UNIQUE,
 	"title"	TEXT,
 	"tags"	TEXT,

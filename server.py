@@ -3,6 +3,9 @@
 import os
 import io
 import re
+import random
+import sqlite3
+
 import socket
 import requests
 
@@ -10,13 +13,14 @@ from flask import Flask, render_template, request, redirect, url_for, make_respo
 from flask import abort, flash, session, send_file, send_from_directory
 from flask import g
 from flask_paginate import Pagination, get_page_parameter
+
 from werkzeug.datastructures import FileStorage
 
-import sqlite3
+import markdown
 
 from tools import init_db, sqlresult_to_an_entry
 from tools import zipcat, pdf2img, register_file, refresh_entry, remove_entry
-from tools import n_gram, n_gram_to_txt, show_hit_text
+from tools import n_gram, n_gram_to_txt, show_hit_text, md_ext
 from settings import (
     SECRET_KEY,
     DATABASE_PATH,
@@ -80,6 +84,7 @@ def taglist():
     return sorted(tags)
 
 
+# Show message when transition
 def flash_and_go(message, status, toward):
     flash(message, status)
     return redirect(toward)
@@ -284,6 +289,25 @@ def search():
     )
 
 
+@app.route("/")
+
+# I'm feeling lucky :)
+@app.route("/random")
+def go_random():
+    while True:
+        cursor = get_db().cursor()
+        cursor.execute("select max(number) from books")
+        max_num = cursor.fetchone()["max(number)"]
+        if max_num is None:
+            # No books are found.
+            return redirect(url_for("index"))
+
+        number = random.choice(range(max_num)) + 1
+        cursor.execute("select number from books where number = ?", (str(number),))
+        if cursor.fetchone() is not None:
+            return redirect(url_for("show", number=number))
+
+
 # Show the file
 @app.route("/show/<int:number>", defaults={"start_from": 0})
 @app.route("/show/<int:number>/<int:start_from>")
@@ -293,6 +317,12 @@ def show(number, start_from):
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
 
+    if request.referrer is None or "edit_" in request.referrer:
+        prev_url = url_for("index")
+    else:
+        prev_url = request.referrer
+
+    # epub
     if data["filetype"] == "epub":
         return render_template(
             "epub_bibi.html",
@@ -301,12 +331,19 @@ def show(number, start_from):
             iipp=float(start_from),
         )
 
-    else:
-        if request.referrer is None or "edit" in request.referrer:
-            prev_url = url_for("index")
-        else:
-            prev_url = request.referrer
+    # markdown
+    if data["filetype"] == "md":
+        filetype = data["filetype"]
+        filename = str(number) + f".{filetype}"
+        file_real = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        with open(file_real) as fp:
+            text = fp.read()
+        return render_template(
+            "markdown.html", data=data, markdown=md_ext(text), prev_url=prev_url
+        )
 
+    # zip and pdf
+    if data["filetype"] == "zip" or data["filetype"] == "pdf":
         if data["pagenum"] is None:
             return flash_and_go(
                 "Page number is not set. Please refresh the entry", "failed", prev_url
@@ -315,6 +352,8 @@ def show(number, start_from):
         return render_template(
             "viewer.html", data=data, start_from=start_from, prev_url=prev_url
         )
+
+    return flash_and_go("Filetype not supported yet", "failure", url_for("index"))
 
 
 # Returns the original file
@@ -350,7 +389,9 @@ def page_image(number, page, shrink=True):
             img, imgtype, imgmode = zipcat(file_real, page=page)
         else:
             return flash_and_go("Image not supported yet", "failure", url_for("index"))
+
         return send_pil_image(img, imgtype=imgtype, imgmode=imgmode, shrink=shrink)
+
     except IndexError:
         abort(404)
 
@@ -409,11 +450,11 @@ def upload_file():
 
         # Filetype, filename check
         for a_file in files:
-            if not isinstance(a_file, FileStorage):
-                continue
-            if not a_file.filename:
-                continue
-            if not is_allowed_file(a_file.filename):
+            if (
+                not isinstance(a_file, FileStorage)
+                or not a_file.filename
+                or not is_allowed_file(a_file.filename)
+            ):
                 flash(f"Not suitable file type for {a_file.filename}", "failed")
                 continue
 
@@ -428,8 +469,9 @@ def upload_file():
             except (TypeError, OSError, KeyError, IndexError) as e:
                 flash(str(e), "failed")
                 continue
+
             except sqlite3.Error as e:
-                flash(str(e), "failed")
+                flash(str(e), "sqlite3 failed")
                 break
 
         # After registering loop
@@ -441,6 +483,72 @@ def upload_file():
             title="Upload",
             allowed_types=", ".join(ALLOWED_EXT_MIMETYPE.values()),
         )
+
+
+@app.route("/edit_markdown", methods=["GET", "POST"])
+@app.route("/edit_markdown/<int:number>", methods=["GET", "POST"])
+def edit_markdown(number=None):
+    # Check if user specified new or existing
+    if number is not None:
+        cursor = get_db().cursor()
+        cursor.execute("select * from books where number = ?", (str(number),))
+        data = sqlresult_to_an_entry(cursor.fetchone())
+    else:
+        data = {"number": None, "filetype": "md"}
+
+    if not data["filetype"] in ["md"]:
+        return flash_and_go("Not supported", "failed", url_for("index"))
+
+    filetype = data["filetype"]
+    filename = str(number) + f".{filetype}"
+    file_real = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
+    if request.method == "POST":
+        form_data = dict(request.form.items())
+        number, content = form_data["number"], form_data["content"]
+
+        try:
+            if number == "None":
+                # New file
+                a_file = FileStorage(
+                    io.BytesIO(content.encode()),
+                    content_type="text/markdown",
+                    content_length=len(content),
+                    filename="untitled.md",
+                )
+                number = register_file(a_file, database=get_db())
+            else:
+                # (should be) Existing file
+                with open(file_real, "w") as fp:
+                    fp.write(content)
+
+            refresh_entry(number, database=get_db())
+
+        except Exception as e:
+            return flash_and_go(f"Error {e}", "failed", url_for("index"))
+
+        return flash_and_go(
+            f"{number} is created/updated", "success", url_for("show", number=number)
+        )
+
+        if "prev_edit" in session.keys() and session["prev_edit"] is not None:
+            return redirect(session["prev_edit"])
+        else:
+            return redirect(url_for("index"))
+
+    if request.method == "GET":
+        # Editor view
+        session["prev_edit"] = request.referrer
+
+        # New or existed?
+        if data["number"] is None:
+            flash("New note will be created", "info")
+            content = ""
+        else:
+            with open(file_real) as fp:
+                content = fp.read()
+
+        return render_template("edit_markdown.html", data=data, content=content)
 
 
 # Edit the detail
@@ -458,8 +566,8 @@ def dict2sql(data: dict, datatype: dict):  # Casting from python to sql table
     return data
 
 
-@app.route("/edit/<int:number>", methods=["GET", "POST"])
-def edit_fileinfo(number):
+@app.route("/edit_metadata/<int:number>", methods=["GET", "POST"])
+def edit_metadata(number):
     cursor = get_db().cursor()
 
     if request.method == "POST":
@@ -485,7 +593,7 @@ def edit_fileinfo(number):
         session["prev_edit"] = request.referrer  # Save where you are from
         cursor.execute("select * from books where number = ?", (str(number),))
         data = sqlresult_to_an_entry(cursor.fetchone())
-        return render_template("edit.html", data=data, hide_keys=HIDE_KEYS)
+        return render_template("edit_metadata.html", data=data, hide_keys=HIDE_KEYS)
 
 
 # Remove entry

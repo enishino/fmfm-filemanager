@@ -14,6 +14,7 @@ from tools import register_file, refresh_entry, remove_entry
 database_path = "data/data.db"
 inbox = "inbox"
 
+
 # ---- COMMON ---- #
 def get_db():
     DB = sqlite3.connect(DATABASE_PATH)
@@ -22,6 +23,7 @@ def get_db():
 
 
 DB = get_db()
+
 
 # ---- FUNCTIONS ---- #
 # ---- IMPORTER ---- #
