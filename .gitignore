@@ -7,6 +7,7 @@
 *.ipynb
 *.epub
 static/Bibi-v1.2.0/
+static/documents/
 
 # Windows specific
 desktop.ini

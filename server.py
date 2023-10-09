@@ -30,6 +30,8 @@ from settings import (
     UPLOADDIR_PATH,
     THUMBDIR_PATH,
     ALLOWED_EXT_MIMETYPE,
+    IMG_MIMETYPES,
+    IMG_SHRINK,
     HIDE_KEYS,
 )
 
@@ -93,20 +95,20 @@ def flash_and_go(message, status, toward):
 # Data tools
 # PIL Image -> Image file
 def send_pil_image(
-    pil_img, imgtype="JPEG", imgmode="RGB", quality=100, shrink=False, caching=True
+    pil_img, imgtype=None, imgmode=None, quality=100, shrink=False, caching=True
 ):
-    if shrink:  # REFACT consider splitting
-        imgtype = "JPEG"
+    if shrink == True or imgtype == None:  # REFACT consider splitting
+        imgtype = "jpeg"
         quality = 90
         imgmode = "RGB"
 
+    imgtype = imgtype.lower()
     pil_img = pil_img.convert(imgmode)
     img_io = io.BytesIO()
     pil_img.save(img_io, imgtype, quality=quality)
     img_io.seek(0)
 
-    mimetypes = {"PNG": "image/png", "JPEG": "image/jpeg", "BMP": "image/bmp"}
-    response = make_response(send_file(img_io, mimetype=mimetypes[imgtype]))
+    response = make_response(send_file(img_io, mimetype=IMG_MIMETYPES[imgtype]))
     if caching:
         response.headers["Cache-Control"] = "max-age=3000"
     return response
@@ -371,7 +373,7 @@ def raw(number):
 
 # Returns the image of a page
 @app.route("/img/<int:number>/<int:page>")
-def page_image(number, page, shrink=True):
+def page_image(number, page, shrink=IMG_SHRINK):
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
@@ -383,8 +385,7 @@ def page_image(number, page, shrink=True):
     try:
         if filetype == "pdf":
             img = pdf2img(file_real, page=page, dpi=175)
-            imgtype = "JPEG"
-            imgmode = "RGB"
+            imgtype, imgmode = None, None
         elif filetype == "zip":
             img, imgtype, imgmode = zipcat(file_real, page=page)
         else:
@@ -450,11 +451,10 @@ def upload_file():
 
         # Filetype, filename check
         for a_file in files:
-            if (
-                not isinstance(a_file, FileStorage)
-                or not a_file.filename
-                or not is_allowed_file(a_file.filename)
-            ):
+            if not isinstance(a_file, FileStorage) or not a_file.filename:
+                continue
+
+            if not is_allowed_file(a_file.filename):
                 flash(f"Not suitable file type for {a_file.filename}", "failed")
                 continue
 

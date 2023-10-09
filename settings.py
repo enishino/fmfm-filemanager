@@ -34,5 +34,19 @@ ALLOWED_EXT_MIMETYPE = {
     "application/epub+zip": "epub",
     "text/markdown": "md",
 }
+
 # Images in zip file
-IMG_SUFFIX = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".gjf")
+IMG_MIMETYPES = {
+    "png": "image/png",
+    "jpeg": "image/jpeg",
+    "jpg": "image/jpeg",
+    "bmp": "image/bmp",
+    "tiff": "image/tiff",
+    "tif": "image/tiff",
+    "gif": "image/gif",
+    "webp": "image/webp",
+}
+IMG_SUFFIX = tuple(f".{k}" for k in IMG_MIMETYPES.keys())
+
+# True to shrink image into JPEG when transferred
+IMG_SHRINK = False
