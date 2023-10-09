@@ -19,7 +19,7 @@ from werkzeug.datastructures import FileStorage
 import markdown
 
 from tools import init_db, sqlresult_to_an_entry
-from tools import zipcat, pdf2img, register_file, refresh_entry, remove_entry
+from tools import resize_keep_aspect, zipcat, pdf2img, register_file, refresh_entry, remove_entry
 from tools import n_gram, n_gram_to_txt, show_hit_text, md_ext
 from settings import (
     SECRET_KEY,
@@ -32,6 +32,8 @@ from settings import (
     ALLOWED_EXT_MIMETYPE,
     IMG_MIMETYPES,
     IMG_SHRINK,
+    IMG_SHRINK_WIDTH,
+    IMG_SHRINK_HEIGHT,
     HIDE_KEYS,
 )
 
@@ -101,6 +103,11 @@ def send_pil_image(
         imgtype = "jpeg"
         quality = 90
         imgmode = "RGB"
+
+        if (pil_img.width > pil_img.height) and (pil_img.width > IMG_SHRINK_WIDTH):
+            pil_img = resize_keep_aspect(pil_img, width=IMG_SHRINK_WIDTH)
+        if (pil_img.height > pil_img.width) and (pil_img.height > IMG_SHRINK_HEIGHT):
+            pil_img = resize_keep_aspect(pil_img, height=IMG_SHRINK_HEIGHT)
 
     imgtype = imgtype.lower()
     pil_img = pil_img.convert(imgmode)

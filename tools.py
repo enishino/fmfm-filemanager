@@ -137,6 +137,19 @@ def zipcat(filename, page=None):
             return img, imgtype, imgmode
 
 
+def resize_keep_aspect(img, width=None, height=None, resample=Image.Resampling.BOX):
+    assert not (width is None and height is None)
+
+    orig_x, orig_y = img.size
+    if width is not None:
+        new_y = orig_y * width // orig_x
+        new_x = width
+    if height is not None:
+        new_x = orig_x * height // orig_y
+        new_y = height
+
+    return img.resize((new_x, new_y), resample=resample)
+
 # Text to N-grammed text
 def n_gram(txt, gram_n=2):
     splitted = [txt[n : n + gram_n] for n in range(len(txt) - gram_n + 1)]

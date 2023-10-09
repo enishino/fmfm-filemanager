@@ -49,4 +49,7 @@ IMG_MIMETYPES = {
 IMG_SUFFIX = tuple(f".{k}" for k in IMG_MIMETYPES.keys())
 
 # True to shrink image into JPEG when transferred
-IMG_SHRINK = False
+IMG_SHRINK = True
+
+# Maximum size of shrunk image (if larger than this value)
+IMG_SHRINK_WIDTH, IMG_SHRINK_HEIGHT = 3840, 2160
