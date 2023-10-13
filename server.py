@@ -104,9 +104,9 @@ def send_pil_image(
         quality = 90
         imgmode = "RGB"
 
-        if (pil_img.width > pil_img.height) and (pil_img.width > IMG_SHRINK_WIDTH):
+        if (pil_img.width >= pil_img.height) and (pil_img.width > IMG_SHRINK_WIDTH):
             pil_img = resize_keep_aspect(pil_img, width=IMG_SHRINK_WIDTH)
-        if (pil_img.height > pil_img.width) and (pil_img.height > IMG_SHRINK_HEIGHT):
+        if (pil_img.height >= pil_img.width) and (pil_img.height > IMG_SHRINK_HEIGHT):
             pil_img = resize_keep_aspect(pil_img, height=IMG_SHRINK_HEIGHT)
 
     imgtype = imgtype.lower()
