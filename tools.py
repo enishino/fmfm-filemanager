@@ -150,6 +150,7 @@ def resize_keep_aspect(img, width=None, height=None, resample=Image.Resampling.B
 
     return img.resize((new_x, new_y), resample=resample)
 
+
 # Text to N-grammed text
 def n_gram(txt, gram_n=2):
     splitted = [txt[n : n + gram_n] for n in range(len(txt) - gram_n + 1)]

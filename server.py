@@ -19,7 +19,14 @@ from werkzeug.datastructures import FileStorage
 import markdown
 
 from tools import init_db, sqlresult_to_an_entry
-from tools import resize_keep_aspect, zipcat, pdf2img, register_file, refresh_entry, remove_entry
+from tools import (
+    resize_keep_aspect,
+    zipcat,
+    pdf2img,
+    register_file,
+    refresh_entry,
+    remove_entry,
+)
 from tools import n_gram, n_gram_to_txt, show_hit_text, md_ext
 from settings import (
     SECRET_KEY,
@@ -380,7 +387,13 @@ def raw(number):
 
 # Returns the image of a page
 @app.route("/img/<int:number>/<int:page>")
+@app.route("/raw/<int:number>/<int:page>")
 def page_image(number, page, shrink=IMG_SHRINK):
+    # If raw specified shrink is off
+    # ToDo: Bad way! :(
+    if request.path[:5] == "/raw/":
+        shrink = False
+
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
