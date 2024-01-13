@@ -3,6 +3,12 @@ A web-based document manager/viewer upon Flask+Python. Currently PDF, zip file (
 
 **This is still in beta stage and the code is not secure. Please do not use this on public servers.**
 
+## For what?
+* To collect all the books into a one place
+* To read books using only web browsers
+* To handle right-to-left format books (Japanese manga and vertical writing 縦書き) correctly
+* To find sentences from all the stored documents at once (full text search)
+
 ## List view
 Clicking thumbnail opens the viewer. The right bottom "PDF" badge jumps into the original file. Document tagging and searching are supported.
 
