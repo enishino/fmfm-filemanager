@@ -155,9 +155,9 @@ div.menu {
 // Common config
 var img_list = [];
 var data_container = document.getElementById('data-container');
-var start_from = data_container.getAttribute('start_from');
-var spread = data_container.getAttribute('spread');
-var r2l = data_container.getAttribute('r2l');
+var start_from = Number(data_container.getAttribute('start_from'));
+var spread = Number(data_container.getAttribute('spread'));
+var r2l = Number(data_container.getAttribute('r2l'));
 var number = Number(data_container.getAttribute('number'));
 var pagenum = Number(data_container.getAttribute('pagenum'));
 var query = data_container.getAttribute('query');

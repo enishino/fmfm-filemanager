@@ -1,4 +1,4 @@
-FROM python:3.8-bullseye
+FROM python:3.12-bookworm
 ENV PORT 8888
 
 USER root
