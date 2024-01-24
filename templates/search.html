@@ -17,7 +17,7 @@
     {% for k, v in item.items() if ns.truncated == false %}
     {% if loop.index < 10 %}
         {% if k != 'title' %}
-        <li class="hit"><a href="{{ url_for('show', number=n, start_from=k) }}">Page {{ (k+1)|int }}</a>: {{ v }}</li>
+        <li class="hit"><a href="{{ url_for('show', number=n, start_from=k, query=query) }}">Page {{ (k+1)|int }}</a>: {{ v }}</li>
         {% endif %}
     {% else %}
         {% set ns.truncated = true %}

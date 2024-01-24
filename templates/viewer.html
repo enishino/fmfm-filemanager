@@ -57,6 +57,17 @@ div.menu {
 </style>
 </head>
 <body>
+
+<div id="data-container"
+  start_from="{{ start_from }}"
+  spread="{{ data['spread'] }}"
+  r2l="{{ data['r2l'] }}"
+  pagenum="{{ data['pagenum'] }}"
+  number="{{ data['number'] }}"
+  query="{{ query }}"
+  >
+</div>
+
 <div class="parent">
 
 <!-- Flash error messages-->
@@ -89,24 +100,34 @@ div.menu {
                 ✎
             </a>
         </li>
+
         <li class="nav-item nav-link d-flex">
             <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
             onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
             <div class="d-flex align-items-center ms-2">/ {{ data['pagenum'] | int }}</div>
         </li>
+
         <li class="nav-item nav-link d-flex flex-grow-1 align-items-center">
             <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" 
              step="1" id="pagecontrol" value="0"
              onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
         </li>
+
+        <li class="nav-item nav-link">
+            <input type="checkbox" class="btn-check" id="highlight" autocomplete="off" aria-label="on/off highlight"
+            onClick="list_init(); redraw(); this.blur()" checked />
+            <label class="btn btn-outline-primary" for="highlight">🖍️</label>
+        </li>
+
         <li class="nav-item nav-link">
             <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off" aria-label="shift the page"
-            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()" />
+            onClick="list_init(); redraw(); this.blur()" />
             <label class="btn btn-outline-primary" for="pageshift">➦</label>
         </li>
+
         <li class="nav-item nav-link">
             <input type="checkbox" class="btn-check" id="spread" autocomplete="off" aria-label="spreading the book"
-            onClick="list_init(); pagemove('both', pos=image_handler.current()), redraw(); this.blur()"
+            onClick="list_init(); redraw(); this.blur()"
             {% if data['spread'] %} checked {% endif %} />
             <label class="btn btn-outline-info" for="spread">📖</label>
         </li>
@@ -127,17 +148,19 @@ div.menu {
 
 </div>
 
-</div>
-
 <canvas id="canvas" width="2040" height="1200" style="width:1020px; height:600px"></canvas>
 </div>
 
 <script>
 // Common config
 var img_list = [];
-var start_from = {{ start_from }}
-var spread = {{ data['spread'] }}
-var r2l = {{ data['r2l'] }}
+var data_container = document.getElementById('data-container');
+var start_from = data_container.getAttribute('start_from');
+var spread = data_container.getAttribute('spread');
+var r2l = data_container.getAttribute('r2l');
+var number = Number(data_container.getAttribute('number'));
+var pagenum = Number(data_container.getAttribute('pagenum'));
+var query = data_container.getAttribute('query');
 var pagecontroller = document.getElementById("pagecontrol");
 var pagenumshow = document.getElementById('position');
 
@@ -147,13 +170,14 @@ var ctx = canvas.getContext("2d");
 var expansion = 3.0; // internal resolution per canvas size
 
 // URL list
-file_list = Array.from(Array({{ data['pagenum'] }}), (v, k) => "/img/{{ data['number'] }}/" + k)
 
 //// ---- Image list handling ---- ////
 // Image list creation and modification
 // Todo: Split interface update and list making
 function list_init() {
   spread = document.getElementById("spread").checked; // By default is read from DB
+  highlight = document.getElementById("highlight").checked;
+
   if (spread) {
     pageshift = document.getElementById("pageshift").checked; // By default is false
     document.getElementById("pageshift").disabled = false;
@@ -162,7 +186,14 @@ function list_init() {
     document.getElementById("pageshift").disabled = true;
   }
 
-  img_list = file_list.concat();
+  if (highlight) {
+    queue_append = "?query=" + query;
+  } else{
+    queue_append = "";
+  }
+  img_list = Array.from(
+    Array(pagenum), (v, k) => "/img/" + data_container.getAttribute('number') + "/" + k + queue_append
+  )
 
   // [Start position]
   // [R2L] direction reversing: left page [0 ... 128] right page
@@ -189,10 +220,12 @@ function sane_position(pos) {
   if (pos > img_list.length - 1) {
     return img_list.length - 1 - (Number(spread) * img_list.length % 2)
   }
+
   // Underflow fix
   if (pos <= 0) {
     return 0;
   }
+
   // "Left" page should be selected when spread
   return pos - (Number(spread) * pos % 2)
 }
@@ -205,9 +238,11 @@ var image_handler = (function () {
     right: function () {
       pos += 1 + Number(spread)
     },
+
     left: function () {
       pos -= 1 + Number(spread)
     },
+
     set_pos: function (abs_pos) {
       if (isNaN(abs_pos)) {
         console.log("Error: " + abs_pos + " is not a number")
@@ -215,6 +250,7 @@ var image_handler = (function () {
         pos = parseInt(abs_pos)
       }
     },
+    
     path: function () {
       pos = sane_position(pos)
       if (spread) {
@@ -223,6 +259,7 @@ var image_handler = (function () {
         return [img_list[pos], null];
       }
     },
+
     current: function () {
       return sane_position(pos);
     },
@@ -238,6 +275,7 @@ function image_loader(list){
       img.src = src;
       await img.decode();
       return img;
+
     } else {
       return null;
     }

@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!python3
+
+"""
+Tools for FMFM
+"""
 
 # Common
 import os
@@ -20,8 +24,8 @@ from PIL import Image, ImageOps, ImageFont, ImageDraw
 
 # PDF
 import poppler
-from poppler import PageRenderer
-from poppler import RenderHint
+from poppler import PageRenderer, RenderHint, CaseSensitivity, Rectangle
+from poppler.cpp import page as pp_page
 
 # EPUB
 from ebooklib import epub
@@ -30,15 +34,9 @@ from bs4 import BeautifulSoup
 # Markdown
 import markdown
 
-md_ext = functools.partial(
-    markdown.markdown,
-    extensions=["footnotes", "tables", "nl2br", "sane_lists", "fenced_code"],
-)
-
 # Import from web
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
 
 # FMFM settings
 from settings import (
@@ -50,14 +48,23 @@ from settings import (
     EPUB_CHUNK_SPLIT,
 )
 
+# Markdown parser
+md_ext = functools.partial(
+    markdown.markdown,
+    extensions=["footnotes", "tables", "nl2br", "sane_lists", "fenced_code"],
+)
 
-# DB Initialization
+# PDF renderer of poppler
+renderer = PageRenderer()
+
+
 def init_db():
+    """DB Initialization"""
     if os.path.exists(DATABASE_PATH):
         return
 
     with closing(sqlite3.connect(DATABASE_PATH)) as db:
-        with open(SCHEMA_PATH, mode="r") as f:
+        with open(SCHEMA_PATH, mode="r", encoding="utf-8") as f:
             db.cursor().executescript(f.read())
         db.commit()
 
@@ -66,24 +73,25 @@ def init_db():
     os.makedirs(THUMBDIR_PATH, exist_ok=True)
 
 
-# SQlite3 Row -> Dict with error handling
 def sqlresult_to_an_entry(result):
+    """SQlite3 Row -> Dict with error handling"""
     try:
         return dict(result)
-    except TypeError:
-        raise IndexError
+    except TypeError as exc:
+        raise IndexError from exc
 
 
 # Image generation
-def pdf2img(filename, page=0, dpi=192, antialias=True):
+def pdf2img(filename, page=0, dpi=192, query="", antialias=True):
+    """PDF page to PIL image"""
     pdf = poppler.load_from_file(filename)
     if page >= pdf.pages:
         raise IndexError
 
-    renderer = PageRenderer()
     renderer.set_render_hint(RenderHint.text_antialiasing, antialias)
     renderer.set_render_hint(RenderHint.antialiasing, antialias)
-    image = renderer.render_page(pdf.create_page(page), xres=dpi, yres=dpi)
+    page = pdf.create_page(page)
+    image = renderer.render_page(page, xres=dpi, yres=dpi)
 
     pil_image = Image.frombytes(
         "RGBA",
@@ -93,7 +101,51 @@ def pdf2img(filename, page=0, dpi=192, antialias=True):
         str(image.format),
     )
     pil_image = pil_image.convert("RGB")
+
+    if query != "":
+        query_list = (
+            query.replace("-", " ")
+            .replace("_", " ")
+            .replace("　", " ")
+            .replace(".", " ")
+            .split(" ")
+        )
+        positions = [get_txt_pos_of_pdf(page, q) for q in query_list]
+        for p in positions:
+            pil_image = highlight_image_by_positions(pil_image, p, dpi=dpi)
+
     return pil_image
+
+
+def highlight_image_by_positions(
+    img, positions, dpi=192, bgcolor=(255, 255, 0, 100), linecolor=(255, 0, 0, 200)
+):
+    """Highlight specific position of image"""
+    img_new = img.convert("RGB")
+    draw = ImageDraw.Draw(img_new, "RGBA")
+    for p in positions:
+        p_scaled = [v * dpi / 72 for v in p]
+        draw.rectangle(p_scaled, fill=bgcolor, outline=linecolor, width=2)
+    return img_new.convert("RGB")
+
+
+def get_txt_pos_of_pdf(page, txt, case_sensitive=False):
+    """Highlight specific word of image"""
+    case_sensitivity = (
+        CaseSensitivity.case_sensitive
+        if case_sensitive
+        else CaseSensitivity.case_insensitive
+    )
+    memory = Rectangle(*[float(v) for v in [0, 0, 0, 0]])
+    f = functools.partial(
+        page.search,
+        txt,
+        r=memory,
+        direction=pp_page.search_direction_enum.next_result,
+        case_sensitivity=case_sensitivity,
+    )
+    results = [(r.left, r.top, r.right, r.bottom) for r in iter(f, None)]
+    return results
 
 
 # To do 'numerical' sort in files in zip
@@ -101,20 +153,20 @@ nums = re.compile("[0-9]+")
 
 
 def number_to_fixed_digits(s, digits=6):
+    """Fill zeros ahead of number"""
     match = nums.search(s)
-    if match == None:
-        return s
-    else:
+    if match is not None:
         num_with_dights = f"{int(match.group()):0{digits}d}"
         return (
             s[: match.start()]
             + num_with_dights
             + number_to_fixed_digits(s[match.end() :], digits=digits)
         )
+    return s
 
 
-# len and unzip
 def zipcat(filename, page=None):
+    """Get file and number of files in a zip"""
     # *** REFACT ***  split len and get #
     with zipfile.ZipFile(filename) as archive:
         entries = archive.namelist()
@@ -124,7 +176,7 @@ def zipcat(filename, page=None):
                 continue
             if i.lower().endswith(IMG_SUFFIX):
                 image_srcs.append(i)
-        image_srcs = sorted(image_srcs, key=lambda l: number_to_fixed_digits(l))
+        image_srcs = sorted(image_srcs, key=number_to_fixed_digits)
 
         if page is None:
             return len(image_srcs)
@@ -138,6 +190,7 @@ def zipcat(filename, page=None):
 
 
 def resize_keep_aspect(img, width=None, height=None, resample=Image.Resampling.BOX):
+    """Resize the PIL image keeping its aspect ratio"""
     assert not (width is None and height is None)
 
     orig_x, orig_y = img.size
@@ -153,41 +206,49 @@ def resize_keep_aspect(img, width=None, height=None, resample=Image.Resampling.B
 
 # Text to N-grammed text
 def n_gram(txt, gram_n=2):
+    """str -> list; with splitting per N characters"""
     splitted = [txt[n : n + gram_n] for n in range(len(txt) - gram_n + 1)]
     return " ".join(splitted)
 
 
 # N-Grammed text to normal text
 def n_gram_to_txt(txt):
+    """list -> str; recover original string from N-gram"""
     txt_ary = re.split(r"[\s\-\/\;]", txt)
     if max([len(a) for a in txt_ary]) < 3:
         # seems n-grammed
         recovered = txt_ary[0][:-1]
         recovered += "".join([a[-1] for a in txt_ary if len(a) != 0])
         return recovered
-    else:
-        # maybe Non n-grammed
-        return txt
+    return txt
 
 
 # Memo for 2-byte characters
-twobyte_chars = r"[\u3041-\u3096\u30A1-\u30FA々〇〻\u3400-\u9FFF\uF900-\uFAFF]|[\uD840-\uD87F\uDC00-\uDFFF\u3000-\u303F]"
+TWOBYTE_CHARS = "|".join(
+    [
+        r"[\u3041-\u3096\u30A1-\u30FA々〇〻\u3400-\u9FFF\uF900-\uFAFF]",
+        r"[\uD840-\uD87F\uDC00-\uDFFF\u3000-\u303F]",
+    ]
+)
 
 
-# Text to n-gram, if 2-byte chars are contained.
-# * Text -> Text but こんにちは -> こん んに にち ちは
 def ngram_if_2byte(text, gram_n=2):
+    """
+    Text to n-gram, if 2-byte chars are contained.
+    Text -> Text but こんにちは -> こん んに にち ちは
+    """
     txt_ary = re.split(r"[\s\-\/\;]", text)
-    if max([len(a) for a in txt_ary]) > 40 or re.match(twobyte_chars, text):
+    if max(len(a) for a in txt_ary) > 40 or re.match(TWOBYTE_CHARS, text):
         # Contains non-western language
         return n_gram(text, gram_n=gram_n)
-    else:
-        # The text is already tokenized (european lang.).
-        return text
+
+    # The text is already tokenized (european lang.).
+    return text
 
 
-# Cleanup dirty OCRed text
 def clean_ocr_text(t):
+    """Cleanup dirty OCRed text"""
+
     # Join to one line
     t = "".join(t.splitlines()).strip()
 
@@ -197,7 +258,7 @@ def clean_ocr_text(t):
 
     # Remove errornous whitespaces in Japanese OCR
     for _ in range(3):
-        t = re.sub(f"({twobyte_chars}+)[ \t　]({twobyte_chars}+)", "\\1\\2", t)
+        t = re.sub(f"({TWOBYTE_CHARS}+)[ \t　]({TWOBYTE_CHARS}+)", "\\1\\2", t)
 
     # Remove ligartures (fi, fl and so on)
     t = unicodedata.normalize("NFKC", t)
@@ -208,8 +269,8 @@ def clean_ocr_text(t):
     return t
 
 
-# Extract PDF text per page
 def pdf2txt(pdf_path):
+    """Extract PDF text per page"""
     pdf = poppler.load_from_file(pdf_path)
     pages = []
     for i in range(pdf.pages):
@@ -222,8 +283,8 @@ def pdf2txt(pdf_path):
     return pages
 
 
-# Text -> excerpted text (in search result)
 def excerpt(txt, start, end, length):
+    """Text -> excerpted text (in search result)"""
     is_asian = any([True for c in txt if unicodedata.east_asian_width(c) in "FWA"])
     if is_asian:
         length = length // 2
@@ -232,8 +293,8 @@ def excerpt(txt, start, end, length):
     return txt[start:end]
 
 
-# Search result to showable format
 def show_hit_text(text, query):
+    """Search result to showable format"""
     hit_excerpt = ""
     for q in query.split(" "):
         match = re.search(q, text, re.IGNORECASE)
@@ -251,10 +312,10 @@ def register_file(a_file, database):
     a_file: Werkzeug's FileStorage or string.
     database: sqlite3
     """
-    if type(a_file) == FileStorage:
+    if isinstance(a_file, FileStorage):
         file_data = a_file
         filename = secure_filename(a_file.filename)
-    elif type(a_file) == str:
+    elif isinstance(a_file, str):
         file_data = None
         filename = os.path.basename(a_file)
 
@@ -328,8 +389,8 @@ def register_file(a_file, database):
     return new_number
 
 
-# Make a thumbnail and text index
 def refresh_entry(book_number, database, extract_title=False):
+    """Make a thumbnail and text index"""
     cursor = database.cursor()
     cursor.execute("select * from books where number = ?", (book_number,))
     entry = cursor.fetchone()
@@ -355,7 +416,7 @@ def refresh_entry(book_number, database, extract_title=False):
         pagenum = 0  # STUB
 
         # Text to FTS
-        with open(file_real) as fp:
+        with open(file_real, encoding="utf-8") as fp:
             md = fp.read()
         soup = BeautifulSoup(md_ext(md), features="html.parser")
         text = soup.get_text().strip().replace("\n", " ")
@@ -392,7 +453,7 @@ def refresh_entry(book_number, database, extract_title=False):
 
         # Thumbnail
         try:
-            cover_items = [i for i in book.get_items() if type(i) == epub.EpubCover]
+            cover_items = [i for i in book.get_items() if isinstance(i, epub.EpubCover)]
             if cover_items:
                 # EPUB3
                 cover_item = cover_items[0]
@@ -492,6 +553,7 @@ def refresh_entry(book_number, database, extract_title=False):
 
 
 def remove_entry(number, database):
+    """Remove entry from DB"""
     cursor = database.cursor()
 
     # Choose the entry
@@ -503,6 +565,7 @@ def remove_entry(number, database):
     # * slow! what is the reason?
     cursor.execute("delete from books where number = ?", (number,))
     cursor.execute("delete from fts where number = ?", (number,))
+    cursor.connection.commit()
 
     try:
         # Remove the book file
@@ -511,5 +574,3 @@ def remove_entry(number, database):
         os.remove(os.path.join(THUMBDIR_PATH, str(number) + ".jpg"))
     except FileNotFoundError:
         pass
-
-    cursor.connection.commit()

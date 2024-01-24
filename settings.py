@@ -1,3 +1,7 @@
+"""
+Settings for FMFM
+"""
+
 import os
 
 # Settings STUB!
@@ -46,10 +50,13 @@ IMG_MIMETYPES = {
     "gif": "image/gif",
     "webp": "image/webp",
 }
-IMG_SUFFIX = tuple(f".{k}" for k in IMG_MIMETYPES.keys())
+IMG_SUFFIX = tuple(f".{k}" for k in IMG_MIMETYPES)
 
 # True to shrink image into JPEG when transferred
 IMG_SHRINK = True
+
+# PDF image DPI
+PDF_IMG_DPI = 175
 
 # Maximum size of shrunk image (if larger than this value)
 IMG_SHRINK_WIDTH, IMG_SHRINK_HEIGHT = 3840, 2160

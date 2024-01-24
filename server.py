@@ -1,5 +1,9 @@
 #!python3
 
+"""
+Main server module for routing and rendering
+"""
+
 import os
 import io
 import re
@@ -16,8 +20,6 @@ from flask_paginate import Pagination, get_page_parameter
 
 from werkzeug.datastructures import FileStorage
 
-import markdown
-
 from tools import init_db, sqlresult_to_an_entry
 from tools import (
     resize_keep_aspect,
@@ -31,12 +33,12 @@ from tools import n_gram, n_gram_to_txt, show_hit_text, md_ext
 from settings import (
     SECRET_KEY,
     DATABASE_PATH,
-    SCHEMA_PATH,
     PER_PAGE_ENTRY,
     PER_PAGE_SEARCH,
     UPLOADDIR_PATH,
     THUMBDIR_PATH,
     ALLOWED_EXT_MIMETYPE,
+    PDF_IMG_DPI,
     IMG_MIMETYPES,
     IMG_SHRINK,
     IMG_SHRINK_WIDTH,
@@ -44,7 +46,7 @@ from settings import (
     HIDE_KEYS,
 )
 
-# DB initialization
+# sql3_db initialization
 init_db()
 
 # Flask initialization
@@ -57,37 +59,33 @@ app.config.from_mapping(config)
 hostname = socket.gethostname()
 
 
-# DB management
-# Opening DB
 def get_db():
-    DB = getattr(g, "_database", None)
-    if DB is None:
-        DB = g._database = sqlite3.connect(DATABASE_PATH)
-        DB.row_factory = sqlite3.Row
-    return DB
+    """Opening sql3_db"""
+    sql3_db = getattr(g, "_database", None)
+    if sql3_db is None:
+        sql3_db = g._database = sqlite3.connect(DATABASE_PATH)
+        sql3_db.row_factory = sqlite3.Row
+    return sql3_db
 
 
-# Closing DB
 @app.teardown_appcontext
-def close_connection(exception):
-    DB = getattr(g, "_database", None)
-    if DB is not None:
-        DB.close()
+def close_connection(e=None):
+    """Closing sql3_db"""
+    sql3_db = getattr(g, "_database", None)
+    if sql3_db is not None:
+        sql3_db.close()
 
 
-# Mini tools
-# to append queries with AND condition
 @app.template_global()
 def modify_query(**new_values):
+    """# to append queries with AND condition"""
     args = request.args.copy()
-    for key, value in new_values.items():
-        args[key] = value
-    return args
+    return args | new_values
 
 
-# Tag cloud
 @app.template_global()
 def taglist():
+    """Get all the tags"""
     cursor = get_db().cursor()
     cursor.execute("select tags from books")
     all_tag = [t[0] for t in cursor.fetchall() if t[0] != ""]  # *** REFACT ***
@@ -95,18 +93,17 @@ def taglist():
     return sorted(tags)
 
 
-# Show message when transition
 def flash_and_go(message, status, toward):
+    """Show message when transition"""
     flash(message, status)
     return redirect(toward)
 
 
-# Data tools
-# PIL Image -> Image file
 def send_pil_image(
     pil_img, imgtype=None, imgmode=None, quality=100, shrink=False, caching=True
 ):
-    if shrink == True or imgtype == None:  # REFACT consider splitting
+    """PIL Image -> Image file"""
+    if shrink is True or imgtype is not None:  # REFACT consider splitting
         imgtype = "jpeg"
         quality = 90
         imgmode = "RGB"
@@ -137,14 +134,13 @@ sort_methods = {
 }
 
 
-# Each Page
-# Main
 @app.route("/")
 def index():
+    """Main: grid view"""
     # In this gridview just tag search is enabled
     tag = request.args.get("tag", type=str, default="")
     sort_by = request.args.get("sort_by", type=str, default="number_desc")
-    if sort_by in sort_methods.keys():
+    if sort_by in sort_methods:
         sort_col, sort_meth = sort_methods[sort_by]
     else:
         flash("Failure on selecting sorting method", "failure")
@@ -192,6 +188,7 @@ def index():
 
 
 def query_cleaner(query):
+    """Cleanup messy query"""
     query = query.replace("\u3000", " ")  # full-width space
     query = re.sub(r" ([\&\+\(\)\*\\\#]) ", r"\1", query)  # Care for orphan symbols
 
@@ -209,11 +206,11 @@ def query_cleaner(query):
 
 @app.route("/search")
 def search():
+    """Search results"""
     cursor = get_db().cursor()
     query = request.args.get("query", type=str, default="")
     tag = request.args.get("tag", type=str, default="")
     sort_by = request.args.get("sort_by", type=str, default="title_asc")
-    sort_col, sort_meth = "title", "asc"  # Default method
 
     # No query no result
     if query == "":
@@ -250,16 +247,13 @@ def search():
             continue
         fts_excerpt[d["number"]].update({d["page"]: excerpted})
 
-    # Re-search DB for title and get Book title from FTS search
+    # Re-search sql3_db for title and get Book title from FTS search
     numbers = ",".join([str(s) for s in fts_excerpt.keys()])
     # * I'm not sure this SQL good or bad...
     cursor.execute(
-        f"""
-        select * from Books where title like :title
-        or number in ({numbers})
-        """,
+        f"select * from Books where title like :title or number in ({numbers})",
         {
-            "title": "%" + query + "%",
+            "title": f"%{query}%",
         },
     )
     ngram_with_title = cursor.fetchall()
@@ -305,11 +299,10 @@ def search():
     )
 
 
-@app.route("/")
-
-# I'm feeling lucky :)
 @app.route("/random")
 def go_random():
+    """I'm feeling lucky :)"""
+
     while True:
         cursor = get_db().cursor()
         cursor.execute("select max(number) from books")
@@ -329,9 +322,12 @@ def go_random():
 @app.route("/show/<int:number>/<int:start_from>")
 @app.route("/show/<int:number>/<float:start_from>")
 def show(number, start_from):
+    """Show the book"""
+
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
+    query = request.args.get("query", type=str, default="")
 
     if request.referrer is None or "edit_" in request.referrer:
         prev_url = url_for("index")
@@ -352,10 +348,14 @@ def show(number, start_from):
         filetype = data["filetype"]
         filename = str(number) + f".{filetype}"
         file_real = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        with open(file_real) as fp:
+        with open(file_real, encoding="utf-8") as fp:  # ToDo: encoding choice?
             text = fp.read()
         return render_template(
-            "markdown.html", data=data, markdown=md_ext(text), prev_url=prev_url
+            "markdown.html",
+            data=data,
+            markdown=md_ext(text),
+            prev_url=prev_url,
+            query=query,
         )
 
     # zip and pdf
@@ -366,7 +366,11 @@ def show(number, start_from):
             )
 
         return render_template(
-            "viewer.html", data=data, start_from=start_from, prev_url=prev_url
+            "viewer.html",
+            data=data,
+            start_from=start_from,
+            prev_url=prev_url,
+            query=query,
         )
 
     return flash_and_go("Filetype not supported yet", "failure", url_for("index"))
@@ -376,6 +380,8 @@ def show(number, start_from):
 # * Reconsider if SQL is really required
 @app.route("/raw/<int:number>")
 def raw(number):
+    """Raw image from zip"""
+
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
@@ -387,16 +393,13 @@ def raw(number):
 
 # Returns the image of a page
 @app.route("/img/<int:number>/<int:page>")
-@app.route("/raw/<int:number>/<int:page>")
 def page_image(number, page, shrink=IMG_SHRINK):
-    # If raw specified shrink is off
-    # ToDo: Bad way! :(
-    if request.path[:5] == "/raw/":
-        shrink = False
+    """Shrink or rendered image from pdf/zip"""
 
     cursor = get_db().cursor()
     cursor.execute("select * from books where number = ?", (str(number),))
     data = sqlresult_to_an_entry(cursor.fetchone())
+    query = request.args.get("query", type=str, default="")
 
     filetype = data["filetype"]
     filename = str(number) + f".{filetype}"
@@ -404,7 +407,7 @@ def page_image(number, page, shrink=IMG_SHRINK):
 
     try:
         if filetype == "pdf":
-            img = pdf2img(file_real, page=page, dpi=175)
+            img = pdf2img(file_real, page=page, dpi=PDF_IMG_DPI, query=query)
             imgtype, imgmode = None, None
         elif filetype == "zip":
             img, imgtype, imgmode = zipcat(file_real, page=page)
@@ -424,6 +427,7 @@ app.config["THUMBNAIL_FOLDER"] = THUMBDIR_PATH
 
 
 def is_allowed_file(filename):
+    """Check if the file is allowed to be uploaded"""
     return (
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT_MIMETYPE.values()
@@ -431,17 +435,18 @@ def is_allowed_file(filename):
 
 
 def get_remote_file(url):
-    if url == "" or url == None:
+    """Get file from URL"""
+    if url == "" or url is None:
         return None
 
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=60)
     except requests.exceptions.RequestException:
         flash("Specified URL is not found", "failed")
         return None
 
     mimetype = response.headers["Content-Type"].split(";")[0]
-    if mimetype not in ALLOWED_EXT_MIMETYPE.keys():
+    if mimetype not in ALLOWED_EXT_MIMETYPE:
         return flash_and_go(
             "{request.form['file_url']} is not suitable type", "failed", request.url
         )
@@ -458,6 +463,7 @@ def get_remote_file(url):
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload_file():
+    """Upload file(s)"""
     files = []
 
     if request.method == "POST":
@@ -508,6 +514,7 @@ def upload_file():
 @app.route("/edit_markdown", methods=["GET", "POST"])
 @app.route("/edit_markdown/<int:number>", methods=["GET", "POST"])
 def edit_markdown(number=None):
+    """Edit window for markdown files"""
     # Check if user specified new or existing
     if number is not None:
         cursor = get_db().cursor()
@@ -539,7 +546,9 @@ def edit_markdown(number=None):
                 number = register_file(a_file, database=get_db())
             else:
                 # (should be) Existing file
-                with open(file_real, "w") as fp:
+                with open(
+                    file_real, "w", encoding="utf-8"
+                ) as fp:  # ToDo: encoding choice?
                     fp.write(content)
 
             refresh_entry(number, database=get_db())
@@ -547,14 +556,11 @@ def edit_markdown(number=None):
         except Exception as e:
             return flash_and_go(f"Error {e}", "failed", url_for("index"))
 
-        return flash_and_go(
-            f"{number} is created/updated", "success", url_for("show", number=number)
-        )
-
+        flash(f"{number} is created/updated", "success")
         if "prev_edit" in session.keys() and session["prev_edit"] is not None:
             return redirect(session["prev_edit"])
         else:
-            return redirect(url_for("index"))
+            return redirect(url_for("show", number=number))
 
     if request.method == "GET":
         # Editor view
@@ -565,14 +571,15 @@ def edit_markdown(number=None):
             flash("New note will be created", "info")
             content = ""
         else:
-            with open(file_real) as fp:
+            with open(file_real, encoding="utf-8") as fp:  # ToDo: encoding choice?
                 content = fp.read()
 
         return render_template("edit_markdown.html", data=data, content=content)
 
 
 # Edit the detail
-def dict2sql(data: dict, datatype: dict):  # Casting from python to sql table
+def dict2sql(data: dict, datatype: dict):
+    """Casting from python to sql table"""
     for db_k in datatype.keys():
         # *** REFACT *** not to hard-code and clarify the purpose...
         if db_k in ["hide", "spread", "r2l"]:
@@ -588,6 +595,7 @@ def dict2sql(data: dict, datatype: dict):  # Casting from python to sql table
 
 @app.route("/edit_metadata/<int:number>", methods=["GET", "POST"])
 def edit_metadata(number):
+    """Edit metadata of book(s)"""
     cursor = get_db().cursor()
 
     if request.method == "POST":
@@ -620,9 +628,10 @@ def edit_metadata(number):
 # for foolproof this cannot be called by GET.
 @app.route("/remove", methods=["POST"])
 def remove_wrapper():
+    """Remove the book"""
     if request.method == "POST":
         form_data = dict(request.form.items())
-        number = form_data["number"]
+        number = int(form_data["number"]) # Casting is important!
         try:
             remove_entry(number, get_db())
         except Exception as e:
@@ -633,9 +642,9 @@ def remove_wrapper():
         )
 
 
-# Generate thumbnail and text index
 @app.route("/refresh/<int:number>")
 def refresh_wrapper(number):
+    """Refresh the entry: Generate thumbnail and text index"""
     try:
         refresh_entry(number, get_db())
         return flash_and_go(
@@ -645,9 +654,9 @@ def refresh_wrapper(number):
         return flash_and_go(f"Error {e}", "failed", url_for("index"))
 
 
-# Favicon
 @app.route("/favicon.ico")
 def favicon():
+    """Return favicon"""
     return send_from_directory(
         os.path.join(app.root_path, "static"),
         "favicon.ico",
