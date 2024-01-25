@@ -36,7 +36,7 @@ function list_init() {
 
   if (highlight) {
     queue_append = "?query=" + query;
-  } else{
+  } else {
     queue_append = "";
   }
   img_list = Array.from(
@@ -52,7 +52,7 @@ function list_init() {
 
   // Shift the page
   if (pageshift && spread) {
-      img_list.unshift(null);
+    img_list.unshift(null);
   }
 
   // Fixing position of out of the range and wrong spreading
@@ -98,7 +98,7 @@ var image_handler = (function () {
         pos = parseInt(abs_pos)
       }
     },
-    
+
     path: function () {
       pos = sane_position(pos)
       if (spread) {
@@ -116,9 +116,9 @@ var image_handler = (function () {
 
 //// ---- Image obtaining ---- ////
 // Delay loading
-function image_loader(list){
-  async function load(src){
-    if(src) {
+function image_loader(list) {
+  async function load(src) {
+    if (src) {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -133,7 +133,7 @@ function image_loader(list){
 }
 
 // Image preloading
-async function preload(pos, direction, size=6) {
+async function preload(pos, direction, size = 6) {
   if (direction == "right") {
     _list = img_list.slice(pos, pos + size);
   } else {
@@ -162,15 +162,15 @@ async function draw(src1, src2) {
 
     if (w1 + w2 > canvas.width) {
       // shrink height limited by width
-      ratio = canvas.width / (w1+w2);
+      ratio = canvas.width / (w1 + w2);
       height_imgs = canvas.height * ratio;
       img_hpos = (canvas.height - height_imgs) / 2;
-      ctx.drawImage(img1, 0,          img_hpos, w1 * ratio, height_imgs);
+      ctx.drawImage(img1, 0, img_hpos, w1 * ratio, height_imgs);
       ctx.drawImage(img2, w1 * ratio, img_hpos, w2 * ratio, height_imgs);
     } else {
       // shrink width limited by height
       img_wpos = (canvas.width - w1 - w2) / 2;
-      ctx.drawImage(img1, img_wpos,      0, w1, canvas.height);
+      ctx.drawImage(img1, img_wpos, 0, w1, canvas.height);
       ctx.drawImage(img2, w1 + img_wpos, 0, w2, canvas.height);
     }
 
@@ -200,7 +200,7 @@ async function draw(src1, src2) {
 function redraw() {
   // Render canvas precisely
   // I've got why this works from https://teratail.com/questions/67020
-  c_width  = document.documentElement.clientWidth  - 10;
+  c_width = document.documentElement.clientWidth - 10;
   c_height = document.documentElement.clientHeight - 10;
   canvas.style.width = c_width + "px";
   canvas.style.height = c_height + "px";
@@ -221,7 +221,7 @@ function redraw() {
 
 //// ---- Interfacing ---- ////
 // Page moving wrapper
-function pagemove(direction, pos=null) {
+function pagemove(direction, pos = null) {
   if (pos != null) {
     image_handler.set_pos(pos);
   } else {
@@ -238,7 +238,7 @@ function pagemove(direction, pos=null) {
   if (r2l) {
     pagenumshow.value = img_list.length - pos;
   } else {
-    pagenumshow.value = pos+1;
+    pagenumshow.value = pos + 1;
   }
   redraw();
 
@@ -269,8 +269,12 @@ canvas.addEventListener("click", (e) => {
 // Keyboard interface
 // Todo: use https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap
 function keyboardEvent(event) {
+  if (document.activeElement.id == "search_query") {
+    return
+  }
+
   if (event.type === "keydown") {
-    switch(event.code) {
+    switch (event.code) {
       case "ArrowLeft":
         pagemove("left");
         break;
@@ -316,9 +320,9 @@ list_init();
 
 // Preload
 if (r2l) {
-  pagemove("left", pos=start_from)
-} else{
-  pagemove("right", pos=start_from)
+  pagemove("left", pos = start_from)
+} else {
+  pagemove("right", pos = start_from)
 }
 
 // Draw the canvas
