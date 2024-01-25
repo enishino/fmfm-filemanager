@@ -631,7 +631,7 @@ def remove_wrapper():
     """Remove the book"""
     if request.method == "POST":
         form_data = dict(request.form.items())
-        number = int(form_data["number"]) # Casting is important!
+        number = int(form_data["number"])  # Casting is important!
         try:
             remove_entry(number, get_db())
         except Exception as e:

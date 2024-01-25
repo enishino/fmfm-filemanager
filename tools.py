@@ -110,6 +110,7 @@ def pdf2img(filename, page=0, dpi=192, query="", antialias=True):
             .replace(".", " ")
             .split(" ")
         )
+        query_list = [q for q in query_list if q != ""]
         positions = [get_txt_pos_of_pdf(page, q) for q in query_list]
         for p in positions:
             pil_image = highlight_image_by_positions(pil_image, p, dpi=dpi)
