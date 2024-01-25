@@ -33,7 +33,7 @@ Full-text search (PDF, epub and markdown)
 
 <img src="images/4_Japanese_search.png" alt="Japanese-search" width="500px" />
 
-Search hits are highligted in page view; also in-page search is possible.
+(PDF only) Search hits are highligted in page view; also in-page search is possible.
 
 <img src="images/6_search_highlight.png" alt="Highlighting result words" width="500px" />
 
