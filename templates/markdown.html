@@ -1,117 +1,124 @@
 <!doctype html>
 <html>
+
 <head>
-<meta charset="UTF-8">
-<title>{{ title }}</title>
-<!-- bootstrap 5 -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-<!-- fmfm stylesheet -->
-<link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
-<style>
-nav.hidden {
-    opacity: 0.0
-}
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <!-- bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <!-- fmfm stylesheet -->
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+  <style>
+    nav.hidden {
+      opacity: 0.0
+    }
 
-nav:hover {
-    opacity: 0.8
-}
+    nav:hover {
+      opacity: 0.8
+    }
 
-div.parent {
-    position:relative;
-}
+    div.parent {
+      position: relative;
+    }
 
-div.menu {
-    position: absolute;
-    float: left;
-    left: 0;
-    right: 0;
-    margin: auto;
-}
+    div.menu {
+      position: absolute;
+      float: left;
+      left: 0;
+      right: 0;
+      margin: auto;
+    }
 
-.width60 {
-    width: 60px;
-}
+    .width60 {
+      width: 60px;
+    }
 
-.width40 {
-    width: 40px;
-}
+    .width40 {
+      width: 40px;
+    }
 
-/* For flash */
-.flashes {
-    position: absolute;
-    float: left;
-}
+    /* For flash */
+    .flashes {
+      position: absolute;
+      float: left;
+    }
 
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
+    @keyframes fade-out {
+      from {
+        opacity: 1;
+      }
 
-.fade-out {
-  animation: fade-out 2s 1;
-  animation-fill-mode: both;
-}
+      to {
+        opacity: 0;
+      }
+    }
 
-</style>
+    .fade-out {
+      animation: fade-out 2s 1;
+      animation-fill-mode: both;
+    }
+  </style>
 </head>
+
 <body>
-<div class="parent">
+  <div class="parent">
 
-<!-- Flash error messages-->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
+    <!-- Flash error messages-->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
     <ul class="flashes fade-out">
-    {% for category, message in messages %}
+      {% for category, message in messages %}
       <li class="{{ category }}">{{ message }}</li>
-    {% endfor %}
+      {% endfor %}
     </ul>
-  {% endif %}
-{% endwith %}
+    {% endif %}
+    {% endwith %}
 
-<div class="menu">
-<nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-     aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-    <ul class="navbar-nav flex-grow-1">
-        <li class="nav-item nav-link">
-            <a class="btn btn-secondary" href="{{ prev_url }}">
-            ↩Back
-            </a>
-        </li>
-        <li class="nav-item nav-link">
-            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_metadata', number=data['number']) }}">
-                ✎
-            </a>
-        </li>
-        <li class="nav-item nav-link">
-            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_markdown', number=data['number']) }}">
-                📝
-            </a>
-        </li>
-        <li class="nav-item nav-link">
-            <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
-                ⇩DL
-            </a>
-        </li>
-    </ul>
+    <div class="menu">
+      <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
+        <div class="container-fluid">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+            aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav flex-grow-1">
+              <li class="nav-item nav-link">
+                <a class="btn btn-secondary" href="{{ prev_url }}">
+                  ↩Back
+                </a>
+              </li>
+              <li class="nav-item nav-link">
+                <a class="btn btn-secondary" role="button" href="{{ url_for('edit_metadata', number=data['number']) }}">
+                  ✎
+                </a>
+              </li>
+              <li class="nav-item nav-link">
+                <a class="btn btn-secondary" role="button" href="{{ url_for('edit_markdown', number=data['number']) }}">
+                  📝
+                </a>
+              </li>
+              <li class="nav-item nav-link">
+                <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
+                  ⇩DL
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
     </div>
-  </div>
-</nav>
-</div>
 
-{% block content %}
-{{ markdown | safe }}
-{% endblock %}
+    {% block content %}
+    {{ markdown | safe }}
+    {% endblock %}
 
-<!-- Bootstrap 5 -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <!-- Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+      crossorigin="anonymous"></script>
 </body>
+
 </html>

@@ -7,24 +7,25 @@
 <ul class="items">
     {% for row in rows %}
     {% if not row.hide %}
-        <li class="item">
+    <li class="item">
         <div class="parent">
-        <a href="{{ url_for('refresh_wrapper', number=row.number) }}">
-        <span class="action refresh">↺</span>
-        </a>
-        <a href="{{ url_for('edit_metadata', number=row.number) }}">
-        <span class="action editicon">🔧</span>
-        </a>
-        {% if row.filetype == 'md' %}
-        <a href="{{ url_for('edit_markdown', number=row.number) }}">
-        <span class="action noteicon">✎</span>
-        </a>
-        {% endif %}
-        <a href="{{ url_for('raw', number=row.number) }}">
-        <span class="filetype {{ row.filetype }}">{{ row.filetype }}</span>
-        </a>
-        <a href="{{ url_for('show', number=row.number) }}">
-        <img class="thumbnail" src="{{ url_for('static', filename='thumbnails/' + row.number|string + '.jpg') }}" width="100">
+            <a href="{{ url_for('refresh_wrapper', number=row.number) }}">
+                <span class="action refresh">↺</span>
+            </a>
+            <a href="{{ url_for('edit_metadata', number=row.number) }}">
+                <span class="action editicon">🔧</span>
+            </a>
+            {% if row.filetype == 'md' %}
+            <a href="{{ url_for('edit_markdown', number=row.number) }}">
+                <span class="action noteicon">✎</span>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('raw', number=row.number) }}">
+                <span class="filetype {{ row.filetype }}">{{ row.filetype }}</span>
+            </a>
+            <a href="{{ url_for('show', number=row.number) }}">
+                <img class="thumbnail"
+                    src="{{ url_for('static', filename='thumbnails/' + row.number|string + '.jpg') }}" width="100">
         </div>
         <div class="text-truncate" style="max-width: 100px;">{{ row.title }}</div></a><br />
         {% for tag in row.tags.split(' ') %}
@@ -33,7 +34,7 @@
         {% endif %}
         {% endfor %}
         &nbsp;
-        </li>
+    </li>
     {% endif %}
     {% endfor %}
 </ul>

@@ -1,482 +1,179 @@
 <!doctype html>
 <html>
+
 <head>
-<meta charset="UTF-8">
-<title>{{ data['title'] }}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-<link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
-<style>
-nav.hidden {
-    opacity: 0.0
-}
+  <meta charset="UTF-8">
+  <title>{{ data['title'] }}</title>
 
-nav:hover {
-    opacity: 0.8
-}
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
 
-div.parent {
-    position:relative;
-}
+  <style>
+    nav.hidden {
+      opacity: 0.0
+    }
 
-div.menu {
-    position: absolute;
-    float: left;
-    left: 0;
-    right: 0;
-    margin: auto;
-}
+    nav:hover {
+      opacity: 0.8
+    }
 
-.width60 {
-    width: 60px;
-}
+    div.parent {
+      position: relative;
+    }
 
-.width40 {
-    width: 40px;
-}
+    div.menu {
+      position: absolute;
+      float: left;
+      left: 0;
+      right: 0;
+      margin: auto;
+    }
 
-/* For flash */
-.flashes {
-    position: absolute;
-    float: left;
-}
+    .width60 {
+      width: 60px;
+    }
 
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
+    .width40 {
+      width: 40px;
+    }
 
-.fade-out {
-  animation: fade-out 2s 1;
-  animation-fill-mode: both;
-}
+    /* For flash */
+    .flashes {
+      position: absolute;
+      float: left;
+    }
 
-</style>
+    @keyframes fade-out {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
+    .fade-out {
+      animation: fade-out 2s 1;
+      animation-fill-mode: both;
+    }
+  </style>
 </head>
-<body>
 
-<div id="data-container"
-  start_from="{{ start_from }}"
-  spread="{{ data['spread'] }}"
-  r2l="{{ data['r2l'] }}"
-  pagenum="{{ data['pagenum'] }}"
-  number="{{ data['number'] }}"
-  query="{{ query }}"
-  >
-</div>
+<body onload="redraw()">
 
-<div class="parent">
-
-<!-- Flash error messages-->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <ul class="flashes fade-out">
-    {% for category, message in messages %}
-      <li class="{{ category }}">{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-
-<div class="menu">
-<nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" 
-     aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-    <ul class="navbar-nav flex-grow-1">
-        <li class="nav-item nav-link">
-            <a class="btn btn-secondary" href="{{ prev_url }}">
-            ↩Back
-            </a>
-        </li>
-        <li class="nav-item nav-link">
-            <a class="btn btn-secondary" role="button" href="{{ url_for('edit_metadata', number=data['number']) }}">
-                ✎
-            </a>
-        </li>
-
-        <li class="nav-item nav-link d-flex">
-            <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
-            onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
-            <div class="d-flex align-items-center ms-2">/ {{ data['pagenum'] | int }}</div>
-        </li>
-
-        <li class="nav-item nav-link d-flex flex-grow-1 align-items-center">
-            <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" 
-             step="1" id="pagecontrol" value="0"
-             onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
-        </li>
-
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="highlight" autocomplete="off" aria-label="on/off highlight"
-            onClick="list_init(); redraw(); this.blur()" checked />
-            <label class="btn btn-outline-primary" for="highlight">🖍️</label>
-        </li>
-
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off" aria-label="shift the page"
-            onClick="list_init(); redraw(); this.blur()" />
-            <label class="btn btn-outline-primary" for="pageshift">➦</label>
-        </li>
-
-        <li class="nav-item nav-link">
-            <input type="checkbox" class="btn-check" id="spread" autocomplete="off" aria-label="spreading the book"
-            onClick="list_init(); redraw(); this.blur()"
-            {% if data['spread'] %} checked {% endif %} />
-            <label class="btn btn-outline-info" for="spread">📖</label>
-        </li>
-        <!--
-        <li class="nav-item nav-link">
-            <a href="#" class="btn btn-secondary" onClick='window.open(document.getElementById("canvas").toDataURL())' id="zooming">🔍</a>
-        </li>
-        -->
-        <li class="nav-item nav-link">
-            <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
-                ⇩DL
-            </a>
-        </li>
-    </ul>
-    </div>
+  <div id="data-container" start_from="{{ start_from }}" spread="{{ data['spread'] }}" r2l="{{ data['r2l'] }}"
+    pagenum="{{ data['pagenum'] }}" number="{{ data['number'] }}">
   </div>
-</nav>
 
-</div>
+  <div class="parent">
 
-<canvas id="canvas" width="2040" height="1200" style="width:1020px; height:600px"></canvas>
-</div>
+    <!-- Flash error messages-->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <ul class="flashes fade-out">
+      {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
 
-<script>
-// Common config
-var img_list = [];
-var data_container = document.getElementById('data-container');
-var start_from = Number(data_container.getAttribute('start_from'));
-var spread = Number(data_container.getAttribute('spread'));
-var r2l = Number(data_container.getAttribute('r2l'));
-var number = Number(data_container.getAttribute('number'));
-var pagenum = Number(data_container.getAttribute('pagenum'));
-var query = data_container.getAttribute('query');
-var pagecontroller = document.getElementById("pagecontrol");
-var pagenumshow = document.getElementById('position');
+    <div class="menu">
+      <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
+        <div class="container-fluid">
 
-// Canvas drawing
-var canvas = document.getElementById("canvas");
-var ctx = canvas.getContext("2d");
-var expansion = 3.0; // internal resolution per canvas size
+          <!-- 想定通り動いてないのでまた直す -->
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+            aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
 
-// URL list
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav flex-grow-1">
 
-//// ---- Image list handling ---- ////
-// Image list creation and modification
-// Todo: Split interface update and list making
-function list_init() {
-  spread = document.getElementById("spread").checked; // By default is read from DB
-  highlight = document.getElementById("highlight").checked;
+              <li class="nav-item nav-link">
+                <a class="btn btn-secondary" href="{{ prev_url }}">
+                  ↩Back
+                </a>
+              </li>
 
-  if (spread) {
-    pageshift = document.getElementById("pageshift").checked; // By default is false
-    document.getElementById("pageshift").disabled = false;
-  } else {
-    pageshift = false
-    document.getElementById("pageshift").disabled = true;
-  }
+              <li class="nav-item nav-link">
+                <a class="btn btn-secondary" role="button" href="{{ url_for('edit_metadata', number=data['number']) }}">
+                  ✎
+                </a>
+              </li>
 
-  if (highlight) {
-    queue_append = "?query=" + query;
-  } else{
-    queue_append = "";
-  }
-  img_list = Array.from(
-    Array(pagenum), (v, k) => "/img/" + data_container.getAttribute('number') + "/" + k + queue_append
-  )
+              <li class="nav-item nav-link d-flex">
+                <input type="text" class="form-control width60 text-end" id="position" value="{{ start_from + 1 }}"
+                  onChange="if(r2l){obspos=img_list.length-this.value;}else{obspos=this.value;} pagemove('both', pos=obspos); redraw();" />
+                <div class="d-flex align-items-center ms-2">/ {{ data['pagenum'] | int }}</div>
+              </li>
 
-  // [Start position]
-  // [R2L] direction reversing: left page [0 ... 128] right page
-  if (r2l) {
-    img_list.reverse();
-    start_from = img_list.length - 1 - start_from;
-  }
+              <li class="nav-item nav-link d-flex flex-grow-1 align-items-center">
+                <input type="range" class="form-range pagecontrol" min="0" max="{{ data['pagenum'] - 1 }}" step="1"
+                  id="pagecontrol" value="0" onChange="pagemove('both', pos=this.value); redraw(); this.blur()" />
+              </li>
 
-  // Shift the page
-  if (pageshift && spread) {
-      img_list.unshift(null);
-  }
+              <li class="nav-item nav-link">
+                <div class="dropdown">
+                  <input type="checkbox" class="btn-check" id="highlight" autocomplete="off" aria-label="on/off highlight"
+                    onClick="list_init(); redraw(); this.blur()" checked />
+                  <label class="btn btn-outline-primary" for="highlight">🔍</label>
+              
+                  <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
+                    aria-expanded="false" data-bs-auto-close="outside">
+                    <span class="visually-hidden">Toggle Dropdown</span>
+                  </button>
+              
+                  <form class="dropdown-menu p-4">
+                    <!-- Prevent implicit submission of the form -->
+                    <button type="submit" disabled style="display: none" aria-hidden="true"></button>
+              
+                    <div class="mb-3">
+                      <label for="search_query" class="form-label">Search query</label>
+                      <input type="text" class="form-control" id="search_query" placeholder="input text" value="{{ query }}"
+                        onchange="document.getElementById('search_apply').click()">
+                    </div>
+              
+                    <button type="button" class="btn btn-primary" id="search_apply"
+                      onClick="query=document.getElementById('search_query').value; list_init(); redraw(); this.blur()">Apply</button>
+                  </form>
+                </div>
+              </li>
 
-  // Fixing position of out of the range and wrong spreading
-  start_from = sane_position(start_from);
+              <li class="nav-item nav-link">
+                <input type="checkbox" class="btn-check" id="pageshift" autocomplete="off" aria-label="shift the page"
+                  onClick="list_init(); redraw(); this.blur()" />
+                <label class="btn btn-outline-primary" for="pageshift">➦</label>
+              </li>
 
-  // Paging interface tempering
-  pagecontroller.step = 1 + Number(spread);
-  pagecontroller.max = img_list.length - 1 + (Number(spread) * img_list.length % 2)
-}
+              <li class="nav-item nav-link">
+                <input type="checkbox" class="btn-check" id="spread" autocomplete="off" aria-label="spreading the book"
+                  onClick="list_init(); redraw(); this.blur()" {% if data['spread'] %} checked {% endif %} />
+                <label class="btn btn-outline-info" for="spread">📖</label>
+              </li>
+              <li class="nav-item nav-link">
+                <a class="btn btn-success" role="button" href="{{ url_for('raw',number=data['number']) }}">
+                  ⇩DL
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
 
-function sane_position(pos) {
-  // Position overflow fix
-  if (pos > img_list.length - 1) {
-    return img_list.length - 1 - (Number(spread) * img_list.length % 2)
-  }
+    </div>
 
-  // Underflow fix
-  if (pos <= 0) {
-    return 0;
-  }
+    <canvas id="canvas" width="2040" height="1200" style="width:1020px; height:600px"></canvas>
+  </div>
 
-  // "Left" page should be selected when spread
-  return pos - (Number(spread) * pos % 2)
-}
-
-// Image path handler
-var image_handler = (function () {
-  var pos = start_from;
-
-  return {
-    right: function () {
-      pos += 1 + Number(spread)
-    },
-
-    left: function () {
-      pos -= 1 + Number(spread)
-    },
-
-    set_pos: function (abs_pos) {
-      if (isNaN(abs_pos)) {
-        console.log("Error: " + abs_pos + " is not a number")
-      } else {
-        pos = parseInt(abs_pos)
-      }
-    },
-    
-    path: function () {
-      pos = sane_position(pos)
-      if (spread) {
-        return [img_list[pos], img_list[pos + 1]];
-      } else {
-        return [img_list[pos], null];
-      }
-    },
-
-    current: function () {
-      return sane_position(pos);
-    },
-  };
-})();
-
-//// ---- Image obtaining ---- ////
-// Delay loading
-function image_loader(list){
-  async function load(src){
-    if(src) {
-      const img = new Image();
-      img.src = src;
-      await img.decode();
-      return img;
-
-    } else {
-      return null;
-    }
-  }
-  // Todo: need to catch (and remove) all 404s
-  return Promise.all(list.map(s => load(s)));
-}
-
-// Image preloading
-async function preload(pos, direction, size=6) {
-  if (direction == "right") {
-    _list = img_list.slice(pos, pos + size);
-  } else {
-    _list = img_list.slice(pos - size, pos);
-    _list.reverse();
-  }
-  return await image_loader(_list);
-}
-
-//// ---- Drawing  ---- ////
-// Drawing to canvas func.
-async function draw(src1, src2) {
-  // Changes the cursor
-  canvas.style.cursor = "wait";
-
-  let img1, img2
-  [img1, img2] = await image_loader([src1, src2]);
-
-  if (img1 && img2) {
-    // width-first
-    w1 = img1.width * (canvas.height / img1.height);
-    w2 = img2.width * (canvas.height / img2.height);
-    // height-first
-    h1 = img1.height * (canvas.width / img1.width);
-    h2 = img2.height * (canvas.width / img2.width);
-
-    if (w1 + w2 > canvas.width) {
-      // shrink height limited by width
-      ratio = canvas.width / (w1+w2);
-      height_imgs = canvas.height * ratio;
-      img_hpos = (canvas.height - height_imgs) / 2;
-      ctx.drawImage(img1, 0,          img_hpos, w1 * ratio, height_imgs);
-      ctx.drawImage(img2, w1 * ratio, img_hpos, w2 * ratio, height_imgs);
-    } else {
-      // shrink width limited by height
-      img_wpos = (canvas.width - w1 - w2) / 2;
-      ctx.drawImage(img1, img_wpos,      0, w1, canvas.height);
-      ctx.drawImage(img2, w1 + img_wpos, 0, w2, canvas.height);
-    }
-
-  } else if (img1 || img2) {
-    img_single = img1 || img2;
-    h_img = img_single.height * (canvas.width / img_single.width);
-    w_img = img_single.width * (canvas.height / img_single.height);
-
-    if (w_img > canvas.width) {
-      // shrink height limited by width
-      ctx.drawImage(img_single, 0, (canvas.height - h_img) / 2, canvas.width, h_img);
-    } else {
-      // shrink width limited by height
-      ctx.drawImage(img_single, (canvas.width - w_img) / 2, 0, w_img, canvas.height);
-    }
-
-  } else {
-    console.log("No images are found.");
-  }
-
-  // Get back the cursor
-  canvas.style.cursor = "auto";
-}
-
-// Drawing wrapper
-// Todo(bug): this drawing a bit exceeds iPad's screen.
-function redraw() {
-  // Render canvas precisely
-  // I've got why this works from https://teratail.com/questions/67020
-  c_width  = document.documentElement.clientWidth  - 10;
-  c_height = document.documentElement.clientHeight - 10;
-  canvas.style.width = c_width + "px";
-  canvas.style.height = c_height + "px";
-  canvas.width = c_width * expansion;
-  canvas.height = c_height * expansion;
-
-  if (canvas.width / canvas.height < 1.4) {
-    spread = false; // Turn off spreading ANYWAY
-  } else {
-    spread = document.getElementById("spread").checked; // By default is read from DB
-  }
-
-  // get image path
-  let src1, src2;
-  [src1, src2] = image_handler.path();
-  draw(src1, src2);
-}
-
-//// ---- Interfacing ---- ////
-// Page moving wrapper
-function pagemove(direction, pos=null) {
-  if (pos != null) {
-    image_handler.set_pos(pos);
-  } else {
-    if (direction == "right") {
-      image_handler.right();
-    } else if (direction == "left") {
-      image_handler.left();
-    }
-  }
-
-  // Take current position (set in above code)
-  pos = image_handler.current();
-  pagecontroller.value = pos;
-  if (r2l) {
-    pagenumshow.value = img_list.length - pos;
-  } else {
-    pagenumshow.value = pos+1;
-  }
-  redraw();
-
-  // Preload
-  // REFACT? need to separate semantic of "right" in moving and preloading context
-  if (direction == "right" || direction == "both") {
-    preload(pos, "right");
-  }
-  if (direction == "left" || direction == "both") {
-    preload(pos, "left");
-  }
-}
-
-// Click interface
-canvas.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const point = {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top,
-  };
-  if (canvas.width - point.x * expansion > canvas.width * 0.6) { // 40% Right
-    pagemove("left");
-  } else if (canvas.width - point.x * expansion < canvas.width * 0.4) { // 40% Left
-    pagemove("right");
-  }
-});
-
-// Keyboard interface
-// Todo: use https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap
-function keyboardEvent(event) {
-  if (event.type === "keydown") {
-    switch(event.code) {
-      case "ArrowLeft":
-        pagemove("left");
-        break;
-
-      case "ArrowRight":
-        pagemove("right");
-        break;
-
-      case "Escape":
-      case "KeyQ":
-        history.back();
-        break;
-    }
-  }
-}
-addEventListener("keydown", keyboardEvent);
-
-// Wheel triggers the page movement.
-function wheelEvent(event) {
-  if (event.type === "wheel") {
-    // The point is that user don't want to reverse the wheel direction!
-    // So here the direction is reversed when R2L is on.
-    if (r2l) {
-      dY = -event.deltaY;
-    } else {
-      dY = event.deltaY;
-    }
-    if (dY < 0) {
-      pagemove("left");
-    } else {
-      pagemove("right");
-    }
-  }
-}
-addEventListener("wheel", wheelEvent);
-
-//// ---- Initialization ---- ////
-// When window size changes the canvas will be changed
-window.onresize = redraw;
-
-// Image list preparation
-list_init();
-
-// Preload
-if (r2l) {
-  pagemove("left", pos=start_from)
-} else{
-  pagemove("right", pos=start_from)
-}
-
-// Draw the canvas
-redraw();
-
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='viewer.js' )}}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>
 </body>
+
 </html>

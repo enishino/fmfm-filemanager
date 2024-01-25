@@ -2,14 +2,14 @@
 {% block content %}
 
 <div>
-<div class="mb-3">Document Title {{ data['title'] }} </div>
-<form method="post">
-    <input type="hidden" name="number" value="{{ data['number'] }}">
-    <div class="mb-3">
-        <textarea class="form-control" id="content" name="content" rows="18">{{ content }}</textarea>
-    </div>
-<button type="submit" class="btn btn-primary" accesskey="s">Submit</button>
-</form>
+    <div class="mb-3">Document Title {{ data['title'] }} </div>
+    <form method="post">
+        <input type="hidden" name="number" value="{{ data['number'] }}">
+        <div class="mb-3">
+            <textarea class="form-control" id="content" name="content" rows="18">{{ content }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" accesskey="s">Submit</button>
+    </form>
 </div>
 
 {% endblock %}
