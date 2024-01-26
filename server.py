@@ -260,9 +260,9 @@ def search():
         fts_excerpt[d["number"]].update({d["page"]: excerpted})
 
     # Get title of hits
+    numbers = ",".join([str(s) for s in fts_excerpt.keys()])
     cursor.execute(
-        "select * from Books where number in (:numbers)",
-        {"numbers": ",".join([str(s) for s in fts_excerpt.keys()])},
+        f"select * from Books where number in ({numbers})",
     )
     title_results = cursor.fetchall()
 
@@ -280,11 +280,13 @@ def search():
     for i in title_results:
         entry = dict(i)
         num, title = entry["number"], entry["title"]
+
         # Insert title into result dict
         if num in fts_excerpt.keys():
             fts_excerpt[num].update({"title": title})
         else:
             fts_excerpt[num] = {"title": title}
+
         # If title only matches
         if query.lower() in title.lower():
             fts_excerpt[num].update({0: "[Document Title matches]"})
