@@ -283,9 +283,19 @@ function keyboardEvent(event) {
         pagemove("right");
         break;
 
-      case "Escape":
       case "KeyQ":
         history.back();
+        break;
+
+      case "KeyS":
+        document.getElementById('pageshift').click();
+        break;
+
+      case "KeyF":
+        event.preventDefault();
+        document.getElementById('search_query').blur();
+        document.getElementById('search_dropdown').click();
+        document.getElementById('search_query').focus();
         break;
     }
   }

@@ -209,6 +209,7 @@ def search():
     """Search results"""
     cursor = get_db().cursor()
     query = request.args.get("query", type=str, default="")
+    number = request.args.get("number", type=int, default=0)
     tag = request.args.get("tag", type=str, default="")
     sort_by = request.args.get("sort_by", type=str, default="title_asc")
 
@@ -226,15 +227,26 @@ def search():
         )
 
     # Call SQL to run full-text search
-    cursor.execute(
-        """
-        select * from fts where ngram match :textquery
-        order by bm25(fts) limit 500 
-        """,
-        {
-            "textquery": query_merged,
-        },
-    )
+    if number > 0:
+        cursor.execute(
+            """
+            select * from fts where ngram match :textquery
+            and number = :number
+            order by bm25(fts) limit 500 
+            """,
+            {
+                "textquery": query_merged,
+                "number": number,
+            },
+        )
+    else:
+        cursor.execute(
+            """
+            select * from fts where ngram match :textquery
+            order by bm25(fts) limit 500 
+            """,
+            {"textquery": query_merged},
+        )
 
     # Format results into book->page->Ngram
     fts_result = cursor.fetchall()
@@ -244,22 +256,28 @@ def search():
         orig_txt = n_gram_to_txt(d["ngram"])
         excerpted = show_hit_text(orig_txt, query)
         if excerpted == "...":
-            continue
+            pass  # ToDo 何かがおかしいので一旦握りつぶさずにおく。
         fts_excerpt[d["number"]].update({d["page"]: excerpted})
 
-    # Re-search sql3_db for title and get Book title from FTS search
-    numbers = ",".join([str(s) for s in fts_excerpt.keys()])
-    # * I'm not sure this SQL good or bad...
+    # Get title of hits
     cursor.execute(
-        f"select * from Books where title like :title or number in ({numbers})",
-        {
-            "title": f"%{query}%",
-        },
+        "select * from Books where number in (:numbers)",
+        {"numbers": ",".join([str(s) for s in fts_excerpt.keys()])},
     )
-    ngram_with_title = cursor.fetchall()
+    title_results = cursor.fetchall()
+
+    if number == 0:
+        # Re-search sql3_db for title and get Book title from FTS search
+        cursor.execute(
+            "select * from Books where title like :title",
+            {
+                "title": f"%{query}%",  # ToDo: DANGER!
+            },
+        )
+        title_results += cursor.fetchall()
 
     # Update full-text result with title result
-    for i in ngram_with_title:
+    for i in title_results:
         entry = dict(i)
         num, title = entry["number"], entry["title"]
         # Insert title into result dict

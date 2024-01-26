@@ -81,7 +81,7 @@
     {% endwith %}
 
     <div class="menu">
-      <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden">
+      <nav class="navbar navbar-expand-md navbar-dark bg-dark sticky-top hidden" id="navbar">
         <div class="container-fluid">
 
           <!-- 想定通り動いてないのでまた直す -->
@@ -119,27 +119,41 @@
 
               <li class="nav-item nav-link">
                 <div class="dropdown">
-                  <input type="checkbox" class="btn-check" id="highlight" autocomplete="off" aria-label="on/off highlight"
-                    onClick="list_init(); redraw(); this.blur()" checked />
+                  <input type="checkbox" class="btn-check" id="highlight" autocomplete="off"
+                    aria-label="on/off highlight" onClick="list_init(); redraw(); this.blur()" checked />
                   <label class="btn btn-outline-primary" for="highlight">🔍</label>
-              
-                  <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
-                    aria-expanded="false" data-bs-auto-close="outside">
+
+                  <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" id="search_dropdown"
+                    onfocus="document.getElementById('navbar').classList.remove('hidden')"
+                    onblur="document.getElementById('navbar').classList.add('hidden')" aria-expanded="false"
+                    data-bs-auto-close="outside">
                     <span class="visually-hidden">Toggle Dropdown</span>
                   </button>
-              
-                  <form class="dropdown-menu p-4">
+
+                  <form class="dropdown-menu p-1">
                     <!-- Prevent implicit submission of the form -->
                     <button type="submit" disabled style="display: none" aria-hidden="true"></button>
-              
-                    <div class="mb-3">
+
+                    <div class="mb-2">
                       <label for="search_query" class="form-label">Search query</label>
-                      <input type="search" class="form-control" id="search_query" placeholder="input text" value="{{ query }}"
+                      <input type="search" class="form-control" id="search_query" placeholder="input text"
+                        value="{{ query }}" onfocus="document.getElementById('navbar').classList.remove('hidden')"
+                        onblur="document.getElementById('navbar').classList.add('hidden')"
                         onchange="document.getElementById('search_apply').click()">
                     </div>
-              
-                    <button type="button" class="btn btn-primary" id="search_apply"
-                      onClick="query=document.getElementById('search_query').value; list_init(); redraw(); this.blur()">Apply</button>
+
+                    <div class="mb-2">
+                      <button type="button" class="btn btn-primary" id="search_apply"
+                        onclick="query=document.getElementById('search_query').value; list_init(); redraw(); this.blur()">🔍Page</button>
+                    </div>
+
+                    <div class="mb-2">
+                      <button type="button" class="btn btn-primary" id="search_apply" href="{{ url_for('search') }}"
+                        number="{{ data['number'] }}"
+                        onclick="q=document.getElementById('search_query').value; n=this.getAttribute('number');
+                      if(q){document.location = this.getAttribute('href') + '?query=' + q + '&number=' + n}">🔍Doc</button>
+                    </div>
                   </form>
                 </div>
               </li>
