@@ -17,8 +17,9 @@ Clicking thumbnail opens the viewer. The right bottom "PDF" badge jumps into the
 ## Viewer
 Tiny HTML-based document viewer is included. Capabilities:
 * Single page / Spread view
-* Left-to-right / Right-to-left
-* One page shifting (to correct facing page layout)
+* Show pages in Left-to-right or Right-to-left format (select by metadata edit)
+* One page shifting (to correct facing page layout; shortcut: `S` key)
+* Page forward and back by clicking left/right side, press left/right keys or mouse wheel scrolling
 
 <img src="images/2_viewer.png" alt="Viewer" width="500px" />
 
@@ -33,7 +34,7 @@ Full-text search (PDF, epub and markdown)
 
 <img src="images/4_Japanese_search.png" alt="Japanese-search" width="500px" />
 
-(PDF only) Search hits are highligted in page view; also in-page search is possible.
+(PDF only) Search hits are highligted in page view; also in-page search is possible. (shortcut: `F` key)
 
 <img src="images/6_search_highlight.png" alt="Highlighting result words" width="500px" />
 
@@ -77,7 +78,7 @@ Full-text search (PDF, epub and markdown)
 ### Overall
 * The code is ugly, repeating phrases and not well-formatted ;(
 ### Viewer
-* PDF Viewer shows just an image, so in-page search is not possible.
+* PDF Viewer shows just an image, you cannot use browser's text search.
 * PDF rendering is a bit heavy task, for SBCs like raspberry pi (RPi4 handles tasks well in my house though;)
 * To suppress transfer size the result is compressed with JPEG, so the viewer shows lossy image.
 * All the image is set to be cached. Please clear browser cache if you found odd behavior.
